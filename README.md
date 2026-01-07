@@ -13,9 +13,12 @@ NEXOUS는 프로젝트 단위로 전용 AI Agent를 생성하고 오케스트레
 
 - **멀티 LLM 지원**: GPT, Gemini, Claude 통합
 - **프로젝트 기반 Agent 생성**: 프로젝트마다 전용 Agent 인스턴스 생성
-- **Agent Factory + Orchestrator**: PROMETHEUS가 Agent 생성 및 조율 담당
+- **Agent Factory + Orchestrator**: NEXOUS가 Agent 생성 및 조율 담당
 - **Tool 기반 실행**: 확장 가능한 Tool 시스템
 - **LangChain 기반**: Python 3.11 + LangChain
+- **Trace 시스템**: 실행 추적 및 재현 (Replay & Diff)
+- **Docker 지원**: 완전 컨테이너화
+- **CI/CD 통합**: GitHub Actions 자동화
 
 ## 아키텍처 개요
 
