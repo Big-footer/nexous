@@ -13,12 +13,13 @@ from datetime import datetime
 class TraceDiff:
     """두 Trace 파일을 비교하는 클래스"""
     
-    def __init__(self, trace1_path: str, trace2_path: str):
+    def __init__(self, trace1_path: str, trace2_path: str, only: str = None):
         self.trace1_path = Path(trace1_path)
         self.trace2_path = Path(trace2_path)
         self.trace1: Dict[str, Any] = {}
         self.trace2: Dict[str, Any] = {}
         self.differences: List[Dict[str, Any]] = []
+        self.only = only  # 'llm', 'tools', 'errors', None
         
     def load_traces(self):
         """두 Trace 파일 로드"""
@@ -136,6 +137,57 @@ class TraceDiff:
             }
         }
     
+    def compare_llm_calls(self) -> Dict[str, Any]:
+        """LLM 호출 비교"""
+        llm_calls_1 = []
+        llm_calls_2 = []
+        
+        # Trace1에서 LLM calls 추출
+        for agent in self.trace1.get('agents', []):
+            for step in agent.get('steps', []):
+                if step.get('type') == 'LLM':
+                    llm_calls_1.append({
+                        'agent_id': agent.get('agent_id'),
+                        'provider': step.get('provider'),
+                        'model': step.get('model'),
+                        'latency_ms': step.get('latency_ms'),
+                        'tokens': step.get('tokens', {}),
+                        'step_id': step.get('step_id')
+                    })
+        
+        # Trace2에서 LLM calls 추출
+        for agent in self.trace2.get('agents', []):
+            for step in agent.get('steps', []):
+                if step.get('type') == 'LLM':
+                    llm_calls_2.append({
+                        'agent_id': agent.get('agent_id'),
+                        'provider': step.get('provider'),
+                        'model': step.get('model'),
+                        'latency_ms': step.get('latency_ms'),
+                        'tokens': step.get('tokens', {}),
+                        'step_id': step.get('step_id')
+                    })
+        
+        # 총 토큰 계산
+        total_tokens_1 = sum(call.get('tokens', {}).get('total', 0) for call in llm_calls_1)
+        total_tokens_2 = sum(call.get('tokens', {}).get('total', 0) for call in llm_calls_2)
+        
+        # 총 latency 계산
+        total_latency_1 = sum(call.get('latency_ms', 0) for call in llm_calls_1)
+        total_latency_2 = sum(call.get('latency_ms', 0) for call in llm_calls_2)
+        
+        return {
+            'trace1_calls': llm_calls_1,
+            'trace2_calls': llm_calls_2,
+            'trace1_count': len(llm_calls_1),
+            'trace2_count': len(llm_calls_2),
+            'trace1_tokens': total_tokens_1,
+            'trace2_tokens': total_tokens_2,
+            'trace1_latency': total_latency_1,
+            'trace2_latency': total_latency_2,
+            'same_count': len(llm_calls_1) == len(llm_calls_2)
+        }
+    
     def diff(self) -> Dict[str, Any]:
         """전체 Diff 실행"""
         if not self.trace1 or not self.trace2:
@@ -143,9 +195,70 @@ class TraceDiff:
         
         print(f"\n🔍 Comparing Traces:")
         print(f"   Trace 1: {self.trace1.get('run_id')}")
-        print(f"   Trace 2: {self.trace2.get('run_id')}\n")
+        print(f"   Trace 2: {self.trace2.get('run_id')}")
         
-        # 메타데이터 비교
+        if self.only:
+            print(f"   Filter: --only {self.only}\n")
+        else:
+            print()
+        
+        # --only llm 필터
+        if self.only == 'llm':
+            llm_diff = self.compare_llm_calls()
+            
+            print("🤖 LLM Calls:")
+            print(f"   Trace1: {llm_diff['trace1_count']} calls")
+            print(f"   Trace2: {llm_diff['trace2_count']} calls")
+            
+            if llm_diff['same_count']:
+                print("   Status: ✅ Same count")
+            else:
+                print("   Status: ❌ Different count")
+            
+            print(f"\n📊 Tokens:")
+            print(f"   Trace1: {llm_diff['trace1_tokens']:,}")
+            print(f"   Trace2: {llm_diff['trace2_tokens']:,}")
+            if llm_diff['trace1_tokens'] != llm_diff['trace2_tokens']:
+                diff = llm_diff['trace2_tokens'] - llm_diff['trace1_tokens']
+                print(f"   Diff: {diff:+,}")
+            
+            print(f"\n⏱️  Latency:")
+            print(f"   Trace1: {llm_diff['trace1_latency']:,}ms")
+            print(f"   Trace2: {llm_diff['trace2_latency']:,}ms")
+            if llm_diff['trace1_latency'] != llm_diff['trace2_latency']:
+                diff = llm_diff['trace2_latency'] - llm_diff['trace1_latency']
+                pct = (diff / llm_diff['trace1_latency'] * 100) if llm_diff['trace1_latency'] > 0 else 0
+                print(f"   Diff: {diff:+,}ms ({pct:+.1f}%)")
+            
+            # 각 LLM call 상세
+            if llm_diff['trace1_calls'] or llm_diff['trace2_calls']:
+                print(f"\n📋 LLM Call Details:")
+                
+                max_calls = max(len(llm_diff['trace1_calls']), len(llm_diff['trace2_calls']))
+                for i in range(max_calls):
+                    print(f"\n   Call #{i+1}:")
+                    
+                    if i < len(llm_diff['trace1_calls']):
+                        call1 = llm_diff['trace1_calls'][i]
+                        print(f"      Trace1: {call1['agent_id']}")
+                        print(f"         Model: {call1['provider']}/{call1['model']}")
+                        print(f"         Tokens: {call1['tokens'].get('total', 0)}")
+                        print(f"         Latency: {call1['latency_ms']}ms")
+                    else:
+                        print(f"      Trace1: (no call)")
+                    
+                    if i < len(llm_diff['trace2_calls']):
+                        call2 = llm_diff['trace2_calls'][i]
+                        print(f"      Trace2: {call2['agent_id']}")
+                        print(f"         Model: {call2['provider']}/{call2['model']}")
+                        print(f"         Tokens: {call2['tokens'].get('total', 0)}")
+                        print(f"         Latency: {call2['latency_ms']}ms")
+                    else:
+                        print(f"      Trace2: (no call)")
+            
+            return {'llm': llm_diff}
+        
+        # 전체 비교 (기존 코드)
         metadata_diff = self.compare_metadata()
         print("📋 Metadata:")
         for key, value in metadata_diff.items():
@@ -202,7 +315,7 @@ class TraceDiff:
         }
 
 
-def diff_traces(trace1_path: str, trace2_path: str) -> Dict[str, Any]:
+def diff_traces(trace1_path: str, trace2_path: str, only: str = None) -> Dict[str, Any]:
     """두 Trace 파일 비교 (편의 함수)"""
-    differ = TraceDiff(trace1_path, trace2_path)
+    differ = TraceDiff(trace1_path, trace2_path, only=only)
     return differ.diff()

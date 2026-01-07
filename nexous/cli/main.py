@@ -155,6 +155,13 @@ Examples:
         help="Path to second trace.json file"
     )
     
+    diff_parser.add_argument(
+        "--only",
+        type=str,
+        choices=["llm", "tools", "errors"],
+        help="Filter comparison: 'llm' (LLM calls only), 'tools' (Tool calls only), 'errors' (Errors only)"
+    )
+    
     return parser
 
 
@@ -243,13 +250,18 @@ def cmd_diff(args) -> int:
     print("[NEXOUS] Trace Diff started")
     print(f"[NEXOUS] Trace 1: {args.trace1}")
     print(f"[NEXOUS] Trace 2: {args.trace2}")
+    if args.only:
+        print(f"[NEXOUS] Filter: --only {args.only}")
     
     try:
-        diff_traces(args.trace1, args.trace2)
+        diff_traces(args.trace1, args.trace2, only=args.only)
         print("\n[NEXOUS] Diff completed successfully")
         return 0
     except FileNotFoundError as e:
         print(f"[NEXOUS] Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"[NEXOUS] Diff failed: {e}")
         return 1
     except Exception as e:
         print(f"[NEXOUS] Diff failed: {e}")
