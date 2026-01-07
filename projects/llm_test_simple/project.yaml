@@ -1,0 +1,27 @@
+# NEXOUS Project: 간단한 LLM 테스트
+# Version: 1.0
+
+project_id: llm_test_simple
+name: Simple LLM Test
+description: |
+  OpenAI GPT를 사용한 간단한 테스트 프로젝트입니다.
+  단일 Agent로 간단한 질문에 답변합니다.
+
+execution:
+  mode: sequential
+
+# Agent 정의
+agents:
+  - id: assistant_01
+    preset: planner
+    purpose: 간단한 질문에 답변
+    inputs:
+      question: "Python에서 리스트와 튜플의 차이점은 무엇인가요?"
+    outputs:
+      - answer
+
+# Context (전역 설정)
+context:
+  llm_provider: openai
+  model: gpt-3.5-turbo
+  temperature: 0.7
