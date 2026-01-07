@@ -16,8 +16,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ---- app ----
 COPY . .
 
+# ---- install nexous package ----
+RUN pip install --no-cache-dir -e .
+
 # ---- non-root ----
-RUN useradd -m nexous
+RUN useradd -m nexous && chown -R nexous:nexous /app
 USER nexous
 
 # ---- default entry ----
