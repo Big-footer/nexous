@@ -188,6 +188,49 @@ class TraceDiff:
             'same_count': len(llm_calls_1) == len(llm_calls_2)
         }
     
+    def compare_tool_calls(self) -> Dict[str, Any]:
+        """Tool 호출 비교"""
+        tool_calls_1 = []
+        tool_calls_2 = []
+        
+        # Trace1에서 Tool calls 추출
+        for agent in self.trace1.get('agents', []):
+            for step in agent.get('steps', []):
+                if step.get('type') == 'TOOL':
+                    tool_calls_1.append({
+                        'agent_id': agent.get('agent_id'),
+                        'tool_name': step.get('tool_name'),
+                        'status': step.get('status'),
+                        'started_at': step.get('started_at'),
+                        'ended_at': step.get('ended_at'),
+                        'step_id': step.get('step_id'),
+                        'input_summary': step.get('input_summary', ''),
+                        'output_summary': step.get('output_summary', '')
+                    })
+        
+        # Trace2에서 Tool calls 추출
+        for agent in self.trace2.get('agents', []):
+            for step in agent.get('steps', []):
+                if step.get('type') == 'TOOL':
+                    tool_calls_2.append({
+                        'agent_id': agent.get('agent_id'),
+                        'tool_name': step.get('tool_name'),
+                        'status': step.get('status'),
+                        'started_at': step.get('started_at'),
+                        'ended_at': step.get('ended_at'),
+                        'step_id': step.get('step_id'),
+                        'input_summary': step.get('input_summary', ''),
+                        'output_summary': step.get('output_summary', '')
+                    })
+        
+        return {
+            'trace1_calls': tool_calls_1,
+            'trace2_calls': tool_calls_2,
+            'trace1_count': len(tool_calls_1),
+            'trace2_count': len(tool_calls_2),
+            'same_count': len(tool_calls_1) == len(tool_calls_2)
+        }
+    
     def diff(self) -> Dict[str, Any]:
         """전체 Diff 실행"""
         if not self.trace1 or not self.trace2:
@@ -257,6 +300,53 @@ class TraceDiff:
                         print(f"      Trace2: (no call)")
             
             return {'llm': llm_diff}
+        
+        # --only tool 필터
+        if self.only == 'tool' or self.only == 'tools':
+            tool_diff = self.compare_tool_calls()
+            
+            print("🔧 Tool Calls:")
+            print(f"   Trace1: {tool_diff['trace1_count']} calls")
+            print(f"   Trace2: {tool_diff['trace2_count']} calls")
+            
+            if tool_diff['same_count']:
+                print("   Status: ✅ Same count")
+            else:
+                print("   Status: ❌ Different count")
+            
+            # 각 Tool call 상세
+            if tool_diff['trace1_calls'] or tool_diff['trace2_calls']:
+                print(f"\n📋 Tool Call Details:")
+                
+                max_calls = max(len(tool_diff['trace1_calls']), len(tool_diff['trace2_calls']))
+                for i in range(max_calls):
+                    print(f"\n   Call #{i+1}:")
+                    
+                    if i < len(tool_diff['trace1_calls']):
+                        call1 = tool_diff['trace1_calls'][i]
+                        print(f"      Trace1: {call1['agent_id']}")
+                        print(f"         Tool: {call1['tool_name']}")
+                        print(f"         Status: {call1['status']}")
+                        if call1.get('input_summary'):
+                            print(f"         Input: {call1['input_summary'][:80]}...")
+                        if call1.get('output_summary'):
+                            print(f"         Output: {call1['output_summary'][:80]}...")
+                    else:
+                        print(f"      Trace1: (no call)")
+                    
+                    if i < len(tool_diff['trace2_calls']):
+                        call2 = tool_diff['trace2_calls'][i]
+                        print(f"      Trace2: {call2['agent_id']}")
+                        print(f"         Tool: {call2['tool_name']}")
+                        print(f"         Status: {call2['status']}")
+                        if call2.get('input_summary'):
+                            print(f"         Input: {call2['input_summary'][:80]}...")
+                        if call2.get('output_summary'):
+                            print(f"         Output: {call2['output_summary'][:80]}...")
+                    else:
+                        print(f"      Trace2: (no call)")
+            
+            return {'tool': tool_diff}
         
         # 전체 비교 (기존 코드)
         metadata_diff = self.compare_metadata()

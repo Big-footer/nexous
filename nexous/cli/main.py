@@ -158,8 +158,8 @@ Examples:
     diff_parser.add_argument(
         "--only",
         type=str,
-        choices=["llm", "tools", "errors"],
-        help="Filter comparison: 'llm' (LLM calls only), 'tools' (Tool calls only), 'errors' (Errors only)"
+        choices=["llm", "tool", "tools", "errors"],
+        help="Filter comparison: 'llm' (LLM calls only), 'tool'/'tools' (Tool calls only), 'errors' (Errors only)"
     )
     
     return parser
