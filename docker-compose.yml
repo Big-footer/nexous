@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  nexous:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexous:latest
+    container_name: nexous
+    
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NEXOUS_ENV=${NEXOUS_ENV:-development}
+    
+    # Env file (for API keys)
+    env_file:
+      - .env
+    
+    # Volumes for persistent data
+    volumes:
+      - ./outputs:/app/outputs
+      - ./traces:/app/traces
+      - ./projects:/app/projects
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Command override (example)
+    # command: ["--version"]
+
+  # Development service with hot-reload
+  nexous-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nexous:dev
+    container_name: nexous-dev
+    
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NEXOUS_ENV=development
+    
+    env_file:
+      - .env
+    
+    # Mount source code for development
+    volumes:
+      - .:/app
+      - ./outputs:/app/outputs
+      - ./traces:/app/traces
+    
+    # Interactive mode
+    stdin_open: true
+    tty: true
+    
+    # Command override for dev
+    command: ["--help"]
+
+# Networks
+networks:
+  default:
+    name: nexous-network
