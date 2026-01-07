@@ -127,6 +127,14 @@ Examples:
         help="Path to trace.json file"
     )
     
+    replay_parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["dry", "full"],
+        default="dry",
+        help="Replay mode: 'dry' (timeline only) or 'full' (actual execution)"
+    )
+    
     # ========================================
     # diff 명령
     # ========================================
@@ -207,19 +215,23 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_replay(args) -> int:
     """Replay 명령 실행"""
-    from nexous.trace import replay_trace
+    from nexous.trace import TraceReplay
     
     print("[NEXOUS] Trace Replay started")
     print(f"[NEXOUS] Trace file: {args.trace}")
+    print(f"[NEXOUS] Mode: {args.mode.upper()}")
     
     try:
-        replay_trace(args.trace)
+        replay = TraceReplay(args.trace, mode=args.mode)
+        replay.replay()
         print("\n[NEXOUS] Replay completed successfully")
         return 0
     except FileNotFoundError as e:
         print(f"[NEXOUS] Error: {e}")
         return 1
     except Exception as e:
+        print(f"[NEXOUS] Replay failed: {e}")
+        return 1
         print(f"[NEXOUS] Replay failed: {e}")
         return 1
 

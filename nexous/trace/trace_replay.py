@@ -13,9 +13,10 @@ from datetime import datetime
 class TraceReplay:
     """Trace 파일을 읽어서 실행을 재현하는 클래스"""
     
-    def __init__(self, trace_path: str):
+    def __init__(self, trace_path: str, mode: str = "dry"):
         self.trace_path = Path(trace_path)
         self.trace_data: Optional[Dict[str, Any]] = None
+        self.mode = mode  # "dry" or "full"
         
     def load_trace(self) -> Dict[str, Any]:
         """Trace 파일 로드"""
@@ -94,10 +95,20 @@ class TraceReplay:
         
         self.validate_trace()
         
-        print(f"\n🎬 Replaying Trace: {self.trace_data.get('run_id')}")
+        # 모드 표시
+        mode_icon = "🎭" if self.mode == "dry" else "🔄"
+        mode_text = "DRY RUN" if self.mode == "dry" else "FULL REPLAY"
+        
+        print(f"\n{mode_icon} {mode_text}: {self.trace_data.get('run_id')}")
         print(f"   Project: {self.trace_data.get('project_id')}")
         print(f"   Status: {self.trace_data.get('status')}")
-        print(f"   Duration: {self.trace_data.get('duration_ms')}ms\n")
+        print(f"   Duration: {self.trace_data.get('duration_ms')}ms")
+        print(f"   Mode: {self.mode.upper()}")
+        
+        if self.mode == "dry":
+            print(f"   ℹ️  LLM/Tool 호출 없이 타임라인만 재생\n")
+        else:
+            print(f"   ⚠️  실제 LLM/Tool 호출 재실행\n")
         
         # Agent 실행 시뮬레이션
         for agent in self.trace_data.get('agents', []):
