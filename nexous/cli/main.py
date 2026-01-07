@@ -113,6 +113,40 @@ Examples:
         help="Directory for trace output (default: traces)"
     )
     
+    # ========================================
+    # replay 명령
+    # ========================================
+    replay_parser = subparsers.add_parser(
+        "replay",
+        help="Replay execution from trace file"
+    )
+    
+    replay_parser.add_argument(
+        "trace",
+        type=str,
+        help="Path to trace.json file"
+    )
+    
+    # ========================================
+    # diff 명령
+    # ========================================
+    diff_parser = subparsers.add_parser(
+        "diff",
+        help="Compare two trace files"
+    )
+    
+    diff_parser.add_argument(
+        "trace1",
+        type=str,
+        help="Path to first trace.json file"
+    )
+    
+    diff_parser.add_argument(
+        "trace2",
+        type=str,
+        help="Path to second trace.json file"
+    )
+    
     return parser
 
 
@@ -171,6 +205,45 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 1
 
 
+def cmd_replay(args) -> int:
+    """Replay 명령 실행"""
+    from nexous.trace import replay_trace
+    
+    print("[NEXOUS] Trace Replay started")
+    print(f"[NEXOUS] Trace file: {args.trace}")
+    
+    try:
+        replay_trace(args.trace)
+        print("\n[NEXOUS] Replay completed successfully")
+        return 0
+    except FileNotFoundError as e:
+        print(f"[NEXOUS] Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"[NEXOUS] Replay failed: {e}")
+        return 1
+
+
+def cmd_diff(args) -> int:
+    """Diff 명령 실행"""
+    from nexous.trace import diff_traces
+    
+    print("[NEXOUS] Trace Diff started")
+    print(f"[NEXOUS] Trace 1: {args.trace1}")
+    print(f"[NEXOUS] Trace 2: {args.trace2}")
+    
+    try:
+        diff_traces(args.trace1, args.trace2)
+        print("\n[NEXOUS] Diff completed successfully")
+        return 0
+    except FileNotFoundError as e:
+        print(f"[NEXOUS] Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"[NEXOUS] Diff failed: {e}")
+        return 1
+
+
 def cli(args: list = None) -> int:
     """CLI 메인 함수"""
     # .env 파일 로드
@@ -185,6 +258,10 @@ def cli(args: list = None) -> int:
     
     if parsed_args.command == "run":
         return cmd_run(parsed_args)
+    elif parsed_args.command == "replay":
+        return cmd_replay(parsed_args)
+    elif parsed_args.command == "diff":
+        return cmd_diff(parsed_args)
     
     return 0
 
