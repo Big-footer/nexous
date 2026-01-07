@@ -1,0 +1,421 @@
+/**
+ * NEXOUS STEP 4A-2: Replay Panel Styles
+ * 
+ * 명세서의 타임라인 레이아웃과 색상 규칙을 정확히 구현
+ */
+
+/* ============================================
+   Panel Overlay & Container
+   ============================================ */
+
+.replay-panel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.replay-panel {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 1100px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+              0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   Summary Section
+   ============================================ */
+
+.replay-summary {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 20px;
+}
+
+.replay-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.summary-content {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  width: fit-content;
+}
+
+.status-icon {
+  font-size: 16px;
+}
+
+.status-text {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.steps-info {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: #374151;
+}
+
+.total-steps {
+  display: flex;
+  gap: 4px;
+}
+
+.step-breakdown {
+  color: #6b7280;
+}
+
+/* ============================================
+   Replay Content (Timeline + Detail)
+   ============================================ */
+
+.replay-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ============================================
+   Timeline Section
+   ============================================ */
+
+.replay-timeline {
+  width: 60%;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.replay-timeline h4 {
+  margin: 0;
+  padding: 12px 20px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.timeline-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* ============================================
+   Timeline Item
+   ============================================ */
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.timeline-item:hover {
+  background: #f3f4f6;
+}
+
+.timeline-item.selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.step-index {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 13px;
+  min-width: 40px;
+}
+
+.step-type-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 60px;
+  text-align: center;
+}
+
+.step-label {
+  flex: 1;
+  font-size: 14px;
+  color: #111827;
+  font-weight: 500;
+}
+
+.step-duration {
+  font-size: 13px;
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  min-width: 70px;
+  text-align: right;
+}
+
+/* ============================================
+   Step Detail Section
+   ============================================ */
+
+.step-detail {
+  width: 40%;
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+}
+
+.step-detail h4 {
+  margin: 0;
+  padding: 12px 20px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.no-selection {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.detail-header {
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.detail-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.detail-row .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-row .value {
+  font-size: 14px;
+  color: #111827;
+  padding: 8px 12px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.detail-row .value.summary-text {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.detail-row .value.error-message {
+  color: #ef4444;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.detail-row .value.error-type {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.detail-row .value.status-ok {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.detail-row .value.status-error {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.detail-row .value.status-failed {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* ============================================
+   Panel Actions
+   ============================================ */
+
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #f9fafb;
+}
+
+.action-btn {
+  padding: 10px 20px;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  color: #374151;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.action-btn.close-btn {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.action-btn.close-btn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+
+.timeline-list::-webkit-scrollbar,
+.detail-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.timeline-list::-webkit-scrollbar-track,
+.detail-content::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.timeline-list::-webkit-scrollbar-thumb,
+.detail-content::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.timeline-list::-webkit-scrollbar-thumb:hover,
+.detail-content::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .replay-panel {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .replay-content {
+    flex-direction: column;
+  }
+  
+  .replay-timeline,
+  .step-detail {
+    width: 100%;
+    border-right: none;
+  }
+  
+  .step-detail {
+    border-top: 1px solid #e5e7eb;
+    max-height: 300px;
+  }
+  
+  .timeline-item {
+    flex-wrap: wrap;
+  }
+  
+  .step-duration {
+    width: 100%;
+    text-align: left;
+    margin-left: 52px;
+  }
+}
