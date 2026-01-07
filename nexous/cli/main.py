@@ -143,16 +143,33 @@ Examples:
         help="Compare two trace files"
     )
     
+    # Baseline 기반 비교 (권장)
+    diff_parser.add_argument(
+        "--baseline",
+        type=str,
+        help="Project name to use baseline from baseline.yaml (recommended)"
+    )
+    
+    # 직접 trace 지정 (baseline 없을 때만)
     diff_parser.add_argument(
         "trace1",
         type=str,
-        help="Path to first trace.json file"
+        nargs='?',
+        help="Path to first trace.json file (required if --baseline not used)"
     )
     
     diff_parser.add_argument(
         "trace2",
         type=str,
-        help="Path to second trace.json file"
+        nargs='?',
+        help="Path to second trace.json file (required if --baseline not used)"
+    )
+    
+    # 새 trace 지정 (baseline 사용 시)
+    diff_parser.add_argument(
+        "--new",
+        type=str,
+        help="Path to new trace.json file (required with --baseline)"
     )
     
     diff_parser.add_argument(
@@ -287,25 +304,80 @@ def cmd_replay(args) -> int:
 def cmd_diff(args) -> int:
     """Diff 명령 실행"""
     from nexous.trace import diff_traces
+    from pathlib import Path
     
     print("[NEXOUS] Trace Diff started")
-    print(f"[NEXOUS] Trace 1: {args.trace1}")
-    print(f"[NEXOUS] Trace 2: {args.trace2}")
-    if args.only:
-        print(f"[NEXOUS] Filter: --only {args.only}")
-    if args.show:
-        print(f"[NEXOUS] Show: --show {args.show}")
     
-    try:
-        diff_traces(args.trace1, args.trace2, only=args.only, show=args.show)
-        print("\n[NEXOUS] Diff completed successfully")
-        return 0
-    except FileNotFoundError as e:
-        print(f"[NEXOUS] Error: {e}")
-        return 1
-    except Exception as e:
-        print(f"[NEXOUS] Diff failed: {e}")
-        return 1
+    # Baseline 기반 비교 (권장 방식)
+    if args.baseline:
+        from nexous.baseline import BaselineManager
+        
+        if not args.new:
+            print("[NEXOUS] Error: --new is required when using --baseline")
+            return 1
+        
+        print(f"[NEXOUS] Mode: Baseline comparison (recommended)")
+        print(f"[NEXOUS] Baseline: {args.baseline}")
+        print(f"[NEXOUS] New trace: {args.new}")
+        
+        try:
+            # Baseline trace 경로 가져오기
+            manager = BaselineManager()
+            baseline_trace = manager.get_baseline_trace_path(args.baseline)
+            
+            if not baseline_trace:
+                print(f"[NEXOUS] Error: Baseline not found for project '{args.baseline}'")
+                print(f"[NEXOUS] Hint: Run 'nexous baseline list' to see available baselines")
+                return 1
+            
+            if not baseline_trace.exists():
+                print(f"[NEXOUS] Error: Baseline trace not found: {baseline_trace}")
+                return 1
+            
+            print(f"[NEXOUS] Baseline trace: {baseline_trace}")
+            
+            # Diff 실행
+            if args.only:
+                print(f"[NEXOUS] Filter: --only {args.only}")
+            if args.show:
+                print(f"[NEXOUS] Show: --show {args.show}")
+            
+            diff_traces(str(baseline_trace), args.new, only=args.only, show=args.show)
+            print("\n[NEXOUS] Diff completed successfully")
+            return 0
+            
+        except Exception as e:
+            print(f"[NEXOUS] Diff failed: {e}")
+            return 1
+    
+    # 직접 trace 비교 (legacy 방식)
+    else:
+        if not args.trace1 or not args.trace2:
+            print("[NEXOUS] Error: trace1 and trace2 are required when not using --baseline")
+            print("[NEXOUS] Recommended: Use --baseline option for safer comparison")
+            print("[NEXOUS] Example: nexous diff --baseline my_project --new traces/.../trace.json")
+            return 1
+        
+        print(f"[NEXOUS] Mode: Direct comparison (legacy)")
+        print(f"[NEXOUS] ⚠️  Warning: Consider using --baseline for approved baseline comparison")
+        print(f"[NEXOUS] Trace 1: {args.trace1}")
+        print(f"[NEXOUS] Trace 2: {args.trace2}")
+        
+        if args.only:
+            print(f"[NEXOUS] Filter: --only {args.only}")
+        if args.show:
+            print(f"[NEXOUS] Show: --show {args.show}")
+        
+        try:
+            diff_traces(args.trace1, args.trace2, only=args.only, show=args.show)
+            print("\n[NEXOUS] Diff completed successfully")
+            return 0
+        except FileNotFoundError as e:
+            print(f"[NEXOUS] Error: {e}")
+            return 1
+        except Exception as e:
+            print(f"[NEXOUS] Diff failed: {e}")
+            return 1
 
 
 def cmd_baseline(args) -> int:
