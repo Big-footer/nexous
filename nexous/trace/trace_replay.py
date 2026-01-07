@@ -89,7 +89,7 @@ class TraceReplay:
         return self.trace_data.get('errors', [])
     
     def replay(self) -> Dict[str, Any]:
-        """Trace 재현 (시뮬레이션)"""
+        """Trace 재현"""
         if not self.trace_data:
             self.load_trace()
         
@@ -107,14 +107,15 @@ class TraceReplay:
         
         if self.mode == "dry":
             print(f"   ℹ️  LLM/Tool 호출 없이 타임라인만 재생\n")
+            # DRY 모드: 타임라인만 출력
+            for agent in self.trace_data.get('agents', []):
+                self._replay_agent(agent)
         else:
             print(f"   ⚠️  실제 LLM/Tool 호출 재실행\n")
+            # FULL 모드: 실제 재실행
+            return self._full_replay()
         
-        # Agent 실행 시뮬레이션
-        for agent in self.trace_data.get('agents', []):
-            self._replay_agent(agent)
-        
-        # 에러 출력
+        # 에러 출력 (DRY 모드)
         errors = self.get_errors()
         if errors:
             print("\n❌ Errors:")
@@ -160,9 +161,96 @@ class TraceReplay:
                 print(f"      - {step_type}: {step_status}")
         
         print()
+    
+    def _full_replay(self) -> Dict[str, Any]:
+        """FULL 모드: 실제 재실행"""
+        import tempfile
+        import yaml
+        from pathlib import Path
+        
+        print("🔄 Reconstructing project from trace...")
+        
+        # Trace에서 프로젝트 정보 추출
+        project_id = self.trace_data.get('project_id')
+        agents = self.trace_data.get('agents', [])
+        
+        # 임시 프로젝트 파일 생성
+        project_yaml = {
+            'project_id': project_id,
+            'name': f"Replay of {project_id}",
+            'description': f"Full replay from trace: {self.trace_data.get('run_id')}",
+            'execution': self.trace_data.get('execution', {'mode': 'sequential'}),
+            'agents': [],
+            'context': self.trace_data.get('context', {})
+        }
+        
+        # Agents 정보 재구성
+        for agent in agents:
+            agent_config = {
+                'id': agent.get('agent_id'),
+                'preset': agent.get('preset'),
+                'purpose': agent.get('purpose'),
+            }
+            
+            # Inputs 재구성 (첫 INPUT step에서 추출)
+            for step in agent.get('steps', []):
+                if step.get('type') == 'INPUT':
+                    payload = step.get('payload_summary', {})
+                    context_keys = payload.get('context', [])
+                    if context_keys:
+                        agent_config['inputs'] = {k: f"{{{{ {k} }}}}" for k in context_keys}
+                    break
+            
+            # Outputs (OUTPUT step에서 추출)
+            for step in agent.get('steps', []):
+                if step.get('type') == 'OUTPUT':
+                    payload = step.get('payload_summary', {})
+                    output_keys = payload.get('output_keys', [])
+                    if output_keys:
+                        agent_config['outputs'] = output_keys
+                    break
+            
+            project_yaml['agents'].append(agent_config)
+        
+        # 임시 파일로 저장
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            yaml.dump(project_yaml, f)
+            temp_project_path = f.name
+        
+        print(f"✅ Project reconstructed: {temp_project_path}")
+        print(f"🚀 Running project with --use-llm...")
+        
+        # 새 run_id 생성
+        from datetime import datetime
+        new_run_id = f"replay_{self.trace_data.get('run_id')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Runner 호출
+        try:
+            from nexous.core.runner import run_project
+            
+            trace_path = run_project(
+                project_yaml_path=temp_project_path,
+                run_id=new_run_id,
+                trace_dir='traces',
+                use_llm=True  # FULL 모드는 항상 LLM 사용
+            )
+            
+            print(f"\n✅ FULL Replay completed!")
+            print(f"📊 New trace: {trace_path}")
+            print(f"🆔 New run_id: {new_run_id}")
+            
+            # 임시 파일 삭제
+            Path(temp_project_path).unlink(missing_ok=True)
+            
+            return {'status': 'completed', 'trace_path': trace_path, 'run_id': new_run_id}
+            
+        except Exception as e:
+            print(f"\n❌ FULL Replay failed: {e}")
+            Path(temp_project_path).unlink(missing_ok=True)
+            raise
 
 
-def replay_trace(trace_path: str) -> Dict[str, Any]:
+def replay_trace(trace_path: str, mode: str = "dry") -> Dict[str, Any]:
     """Trace 파일 재현 (편의 함수)"""
-    replay = TraceReplay(trace_path)
+    replay = TraceReplay(trace_path, mode=mode)
     return replay.replay()

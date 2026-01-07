@@ -84,7 +84,7 @@ docker run --rm \
 
 ## 2️⃣ FULL Replay (실제 재실행)
 
-**용도**: 실제 LLM/Tool을 호출하여 재실행
+**용도**: Trace에서 프로젝트 재구성 후 실제 LLM/Tool 호출하여 재실행
 
 ### 로컬 실행
 
@@ -97,18 +97,49 @@ python3 -m nexous.cli.main replay \
 ### Docker 실행 (환경 변수 필요)
 
 ```bash
+# 필수: 모든 API 키 환경 변수 전달
 docker run --rm \
-  -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  -e GOOGLE_API_KEY=$GOOGLE_API_KEY \
+  -v $(pwd)/projects:/app/projects \
   -v $(pwd)/traces:/app/traces \
   nexous:baseline \
   replay /app/traces/flood_analysis_ulsan/$BASELINE_RUN_ID/trace.json --mode full
 ```
 
+**출력 예시:**
+```
+🔄 FULL REPLAY: llm_real_001
+   Project: llm_test_simple
+   Status: COMPLETED
+   Duration: 5982ms
+   Mode: FULL
+   ⚠️  실제 LLM/Tool 호출 재실행
+
+🔄 Reconstructing project from trace...
+✅ Project reconstructed: /tmp/tmp5ztpsqp6.yaml
+🚀 Running project with --use-llm...
+
+✅ FULL Replay completed!
+📊 New trace: traces/llm_test_simple/replay_llm_real_001_20260107_230048/trace.json
+🆔 New run_id: replay_llm_real_001_20260107_230048
+```
+
+**프로세스:**
+1. 📖 기존 trace 파싱
+2. 🔧 Project/Agent/Context 재구성
+3. 💾 임시 project.yaml 생성
+4. 🚀 `run_project()` 호출 (--use-llm)
+5. 📊 새 trace 생성 (`replay_{original_run_id}_{timestamp}`)
+
 **특징:**
-- ⏱️ 실제 실행 시간 소요
-- 💰 API 비용 발생
-- 🔄 재현성 검증
+- ⏱️ 실제 실행 시간 소요 (LLM 응답 시간)
+- 💰 API 비용 발생 (실제 LLM 호출)
+- 🔄 완전한 재현성 검증
+- 📊 새 run_id로 trace 생성
 - ⚠️ 환경 변수 필수 (API 키)
+- 🎯 동일 project/preset 스냅샷 사용
 
 ---
 
@@ -214,9 +245,90 @@ echo "Exit code: $?"
 ### 시나리오 1: PR 검증
 
 ```bash
-# 1. 기존 baseline replay
+# 1. 기존 baseline DRY replay (빠른 검증)
 docker run --rm \
   -v $(pwd)/traces:/app/traces \
+  nexous:baseline \
+  replay /app/traces/flood_analysis_ulsan/baseline_001/trace.json --mode dry
+
+# 2. PR 브랜치 실행
+docker run --rm \
+  -v $(pwd)/traces:/app/traces \
+  -v $(pwd)/projects:/app/projects \
+  nexous:pr-branch \
+  run projects/flood_analysis_ulsan/project.yaml \
+  --trace-dir /app/traces \
+  --run-id pr_test_001
+
+# 3. Diff 비교
+docker run --rm \
+  -v $(pwd)/traces:/app/traces \
+  nexous:baseline \
+  diff \
+  /app/traces/flood_analysis_ulsan/baseline_001/trace.json \
+  /app/traces/flood_analysis_ulsan/pr_test_001/trace.json
+```
+
+### 시나리오 2: LLM 재현성 검증
+
+```bash
+# 1. 원본 실행 trace 존재
+ls traces/llm_test_simple/llm_real_001/trace.json
+
+# 2. FULL Replay로 재실행
+docker run --rm \
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  -v $(pwd)/projects:/app/projects \
+  -v $(pwd)/traces:/app/traces \
+  nexous:baseline \
+  replay /app/traces/llm_test_simple/llm_real_001/trace.json --mode full
+
+# 3. 원본 vs Replay 비교
+docker run --rm \
+  -v $(pwd)/traces:/app/traces \
+  nexous:baseline \
+  diff \
+  /app/traces/llm_test_simple/llm_real_001/trace.json \
+  /app/traces/llm_test_simple/replay_llm_real_001_*/trace.json
+
+# 결과 예시:
+# duration_ms:
+#   Trace1: 5982ms
+#   Trace2: 7179ms
+#   Diff: +1197ms (+20%)
+# 
+# ✅ Status: COMPLETED (both)
+# ✅ Agents: All same
+# ✅ Errors: Same count
+```
+
+### 시나리오 3: 디버깅 워크플로우
+
+```bash
+# 1. 실패한 실행의 trace
+ls traces/flood_analysis_ulsan/failed_run_001/trace.json
+
+# 2. DRY replay로 에러 확인
+python3 -m nexous.cli.main replay \
+  traces/flood_analysis_ulsan/failed_run_001/trace.json \
+  --mode dry
+
+# 출력:
+# ❌ executor_01
+#    Status: FAILED
+#    Error: 'list' object has no attribute 'keys'
+
+# 3. 코드 수정 후 FULL replay로 검증
+# (코드 수정)
+python3 -m nexous.cli.main replay \
+  traces/flood_analysis_ulsan/failed_run_001/trace.json \
+  --mode full
+
+# 4. 수정 전후 비교
+python3 -m nexous.cli.main diff \
+  traces/flood_analysis_ulsan/failed_run_001/trace.json \
+  traces/flood_analysis_ulsan/replay_failed_run_001_*/trace.json
+```
   nexous:baseline \
   replay /app/traces/flood_analysis_ulsan/baseline_001/trace.json --mode dry
 
