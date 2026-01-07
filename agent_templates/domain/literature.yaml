@@ -1,0 +1,81 @@
+# Literature Agent Template
+# 도메인 전문 Agent - 문헌 조사
+
+name: literature
+display_name: Literature Agent
+description: 학술 문헌 검색 및 분석을 수행합니다.
+
+category: domain
+role: meta
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+  temperature: 0.5
+
+tools:
+  - web_search
+  - rag_search
+
+dependencies: []
+
+system_prompt: |
+  당신은 학술 문헌 조사 전문가입니다.
+  
+  역할:
+  - 관련 논문과 연구 자료를 검색합니다
+  - 연구 동향을 분석합니다
+  - 핵심 연구 결과를 요약합니다
+  - 연구 간극(Research Gap)을 식별합니다
+  
+  검색 데이터베이스:
+  - Google Scholar
+  - IEEE Xplore
+  - ScienceDirect
+  - KCI (한국학술지인용색인)
+  - RISS (학술연구정보서비스)
+  
+  분석 항목:
+  - 연구 배경 및 필요성
+  - 이론적 기반
+  - 방법론
+  - 주요 연구 결과
+  - 한계점 및 향후 연구 방향
+
+output_schema:
+  type: object
+  properties:
+    search_query:
+      type: string
+    papers_found:
+      type: integer
+    papers:
+      type: array
+      items:
+        type: object
+        properties:
+          title:
+            type: string
+          authors:
+            type: array
+          year:
+            type: integer
+          journal:
+            type: string
+          key_findings:
+            type: array
+    research_trends:
+      type: array
+    research_gaps:
+      type: array
+    recommendations:
+      type: array
+
+tags:
+  - literature
+  - research
+  - paper
+  - academic
+
+version: "1.0.0"
+author: NEXOUS Team

@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NEXOUS Project Schema",
+  "description": "NEXOUS Project YAML의 검증 스키마 - 실행 가능한 계약(Executable Contract)",
+  "type": "object",
+  "required": ["project", "agents", "execution", "trace"],
+  "additionalProperties": false,
+  "properties": {
+    "project": { "$ref": "#/definitions/project" },
+    "context": { "$ref": "#/definitions/context" },
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/agent" },
+      "description": "최소 1개 이상의 Agent 필수"
+    },
+    "execution": { "$ref": "#/definitions/execution" },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/artifact" }
+    },
+    "trace": { "$ref": "#/definitions/trace" }
+  },
+  "definitions": {
+    "project": {
+      "type": "object",
+      "required": ["id", "name", "domain"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "프로젝트 고유 ID (영문, 숫자, _, - 만 허용)"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "프로젝트 표시 이름"
+        },
+        "description": {
+          "type": "string",
+          "description": "프로젝트 설명"
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1,
+          "description": "프로젝트 도메인 (예: flood_analysis, traffic, research)"
+        },
+        "owner": {
+          "type": "string",
+          "description": "프로젝트 소유자"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date",
+          "description": "생성일 (YYYY-MM-DD)"
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "data_sources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["type", "path"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "데이터 소스 타입 (csv, json, shapefile 등)"
+              },
+              "path": {
+                "type": "string",
+                "description": "데이터 소스 경로"
+              }
+            }
+          },
+          "description": "데이터 소스 정의"
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "제약 조건"
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["id", "preset", "purpose"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Agent 고유 ID (중복 불가)"
+        },
+        "preset": {
+          "type": "string",
+          "pattern": "^(core|domain)/[a-zA-Z0-9_-]+$",
+          "description": "Agent 프리셋 (예: core/planner, domain/gis)"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Agent의 목적/역할"
+        },
+        "input": {
+          "type": "object",
+          "properties": {
+            "context": {
+              "type": "boolean",
+              "description": "context 데이터 사용 여부"
+            },
+            "previous_results": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "이전 Agent 결과 참조 (agent.id 목록)"
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "schema": {
+              "type": "string",
+              "description": "출력 스키마 정의"
+            }
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "선행 Agent ID 목록"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Agent 설정"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["sequential", "parallel", "pipeline"],
+          "description": "실행 모드"
+        },
+        "retry_on_failure": {
+          "type": "boolean",
+          "default": false,
+          "description": "실패 시 재시도 여부"
+        },
+        "max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 3,
+          "description": "최대 재시도 횟수"
+        },
+        "stop_on_failure": {
+          "type": "boolean",
+          "default": true,
+          "description": "실패 시 중단 여부"
+        },
+        "timeout_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "전체 실행 타임아웃 (분)"
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["id", "source", "type", "path"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Artifact 고유 ID"
+        },
+        "source": {
+          "type": "string",
+          "description": "생성 Agent ID (agents[].id 참조)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Artifact 타입 (markdown, json, csv, tif 등)"
+        },
+        "path": {
+          "type": "string",
+          "description": "저장 경로"
+        }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "required": ["enabled"],
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Trace 활성화 여부"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["minimal", "standard", "full"],
+          "default": "standard",
+          "description": "Trace 상세 수준"
+        },
+        "store": {
+          "type": "object",
+          "required": ["type", "path"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["local", "remote", "database"],
+              "description": "저장소 타입"
+            },
+            "path": {
+              "type": "string",
+              "description": "저장 경로"
+            }
+          }
+        }
+      }
+    }
+  }
+}

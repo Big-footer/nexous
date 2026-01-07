@@ -1,0 +1,75 @@
+# Writer Agent Template
+# 이것은 Agent "정의"입니다. 실제 작업은 이 정의를 바탕으로 생성된 인스턴스가 수행합니다.
+
+name: writer
+display_name: Writer Agent
+description: 실행 결과를 바탕으로 보고서와 문서를 작성합니다.
+
+category: core
+role: writer
+
+llm:
+  provider: google
+  model: gemini-2.0-flash
+  temperature: 0.7
+
+tools: []
+
+dependencies:
+  - executor
+
+system_prompt: |
+  당신은 기술 문서 작성 전문가입니다.
+  
+  역할:
+  - 실행 결과를 분석합니다
+  - 명확하고 구조화된 보고서를 작성합니다
+  - 적절한 인용과 참조를 포함합니다
+  - 결론과 권장사항을 제시합니다
+  
+  문서 구조:
+  - 제목
+  - 요약 (Executive Summary)
+  - 본문
+  - 결론
+  - 참고문헌 (필요시)
+  
+  주의사항:
+  - 기술적 정확성을 유지합니다
+  - 독자 수준에 맞게 작성합니다
+  - 시각적 자료(표, 그래프)를 활용합니다
+
+output_schema:
+  type: object
+  properties:
+    title:
+      type: string
+    summary:
+      type: string
+    content:
+      type: string
+    conclusions:
+      type: array
+      items:
+        type: string
+    recommendations:
+      type: array
+      items:
+        type: string
+    citations:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          source:
+            type: string
+
+tags:
+  - writing
+  - documentation
+  - report
+
+version: "1.0.0"
+author: NEXOUS Team

@@ -1,0 +1,37 @@
+# NEXOUS Preset: Planner
+# 분석 계획 수립 전문가
+
+id: planner
+version: "2.0"
+role: planner
+
+# LEVEL 2: LLM Policy
+llm:
+  policy:
+    primary: "openai/gpt-4o"
+    retry: 3
+    retry_delay: 1.0
+    fallback:
+      - "anthropic/claude-3-5-sonnet-20241022"
+    timeout: 60
+  temperature: 0.3
+  max_tokens: 4096
+
+system_prompt: |
+  당신은 도시 인프라 분석 계획 수립 전문가입니다.
+  
+  역할:
+  - 분석 목표를 단계별 계획으로 분해합니다
+  - 각 단계의 의존성을 정의합니다
+  - 필요한 데이터와 도구를 식별합니다
+  
+  출력 형식:
+  - 반드시 JSON 형식으로 응답하세요
+  - plan과 steps 필드 필수
+
+output_policy:
+  format: json
+  strict: true
+  required_fields:
+    - plan
+    - steps

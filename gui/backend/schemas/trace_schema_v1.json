@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NEXOUS Trace Schema v1.0",
+  "description": "NEXOUS Run 실행 추적을 위한 trace.json 스키마",
+  "type": "object",
+  "required": ["trace_version", "project_id", "run_id", "status", "agents"],
+  "properties": {
+    "trace_version": { 
+      "type": "string",
+      "description": "스키마 버전"
+    },
+    "project_id": { 
+      "type": "string",
+      "description": "프로젝트 ID"
+    },
+    "run_id": { 
+      "type": "string",
+      "description": "실행 ID"
+    },
+    "status": { 
+      "enum": ["CREATED", "RUNNING", "COMPLETED", "FAILED", "STOPPED"],
+      "description": "실행 상태"
+    },
+    "started_at": { 
+      "type": "string", 
+      "format": "date-time",
+      "description": "시작 시간 (ISO 8601)"
+    },
+    "ended_at": { 
+      "type": "string", 
+      "format": "date-time",
+      "description": "종료 시간 (ISO 8601)"
+    },
+    "duration_ms": { 
+      "type": "integer",
+      "description": "실행 시간 (밀리초)"
+    },
+    "execution": {
+      "type": "object",
+      "properties": {
+        "mode": { "enum": ["sequential", "parallel", "pipeline"] },
+        "retry_count": { "type": "integer" }
+      }
+    },
+    "agents": {
+      "type": "array",
+      "description": "Agent 실행 목록",
+      "items": {
+        "type": "object",
+        "required": ["agent_id", "status", "steps"],
+        "properties": {
+          "agent_id": { "type": "string" },
+          "preset": { "type": "string" },
+          "purpose": { "type": "string" },
+          "status": { "enum": ["PENDING", "RUNNING", "COMPLETED", "FAILED"] },
+          "started_at": { "type": "string", "format": "date-time" },
+          "ended_at": { "type": "string", "format": "date-time" },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["step_id", "type", "status"],
+              "properties": {
+                "step_id": { "type": "string" },
+                "type": { "enum": ["INPUT", "LLM", "TOOL", "OUTPUT"] },
+                "status": { "enum": ["OK", "ERROR"] },
+                "timestamp": { "type": "string", "format": "date-time" },
+                "started_at": { "type": "string", "format": "date-time" },
+                "ended_at": { "type": "string", "format": "date-time" },
+                "latency_ms": { "type": "integer" },
+                "provider": { "type": "string" },
+                "model": { "type": "string" },
+                "tool_name": { "type": "string" },
+                "tokens": {
+                  "type": "object",
+                  "properties": {
+                    "input": { "type": "integer" },
+                    "output": { "type": "integer" },
+                    "total": { "type": "integer" }
+                  }
+                },
+                "input_summary": { "type": "string" },
+                "output_summary": { "type": "string" },
+                "payload_summary": { "type": "object" },
+                "error": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "type", "path", "created_by"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "type": { "type": "string" },
+          "path": { "type": "string" },
+          "created_by": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["agent_id", "step_id", "type", "message", "timestamp"],
+        "properties": {
+          "agent_id": { "type": "string" },
+          "step_id": { "type": "string" },
+          "type": { "type": "string" },
+          "message": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "recoverable": { "type": "boolean" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_agents": { "type": "integer" },
+        "completed_agents": { "type": "integer" },
+        "failed_agents": { "type": "integer" },
+        "total_llm_calls": { "type": "integer" },
+        "total_tool_calls": { "type": "integer" },
+        "total_tokens": { "type": "integer" },
+        "total_duration_ms": { "type": "integer" }
+      }
+    }
+  }
+}

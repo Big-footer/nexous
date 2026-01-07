@@ -1,0 +1,54 @@
+# NEXOUS Project - 교통량 시뮬레이션
+# JSON Schema v1.0 대응
+
+project:
+  id: traffic_simulation
+  name: 울산 교차로 교통량 분석
+  description: YOLO 기반 교통량 분석 및 신호 최적화
+  domain: traffic
+  owner: daejin
+  created_at: "2026-01-04"
+
+agents:
+  - id: planner
+    preset: core/planner
+    purpose: 교통량 분석 계획 수립
+    input:
+      context: true
+
+  - id: executor
+    preset: core/executor
+    purpose: YOLO 기반 차량 검출 및 분석
+    dependencies:
+      - planner
+    input:
+      previous_results:
+        - planner
+
+  - id: writer
+    preset: core/writer
+    purpose: 분석 보고서 작성
+    dependencies:
+      - executor
+    input:
+      previous_results:
+        - executor
+
+execution:
+  mode: sequential
+  retry_on_failure: false
+  stop_on_failure: true
+  timeout_minutes: 30
+
+artifacts:
+  - id: traffic_report
+    source: writer
+    type: markdown
+    path: traffic_report.md
+
+trace:
+  enabled: true
+  level: standard
+  store:
+    type: local
+    path: traces/

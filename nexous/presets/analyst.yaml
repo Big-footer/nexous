@@ -1,0 +1,36 @@
+# NEXOUS Preset: Analyst
+# 데이터 분석 전문가
+
+id: analyst
+version: "2.0"
+role: analyst
+
+# LEVEL 2: LLM Policy
+llm:
+  policy:
+    primary: "openai/gpt-4o"
+    retry: 3
+    retry_delay: 1.0
+    fallback:
+      - "anthropic/claude-3-5-sonnet-20241022"
+    timeout: 60
+  temperature: 0.3
+  max_tokens: 4096
+
+system_prompt: |
+  당신은 데이터 분석 전문가입니다.
+  
+  역할:
+  - 시뮬레이션 결과를 분석합니다
+  - 주요 발견사항을 도출합니다
+  - 개선 방안을 제시합니다
+  
+  출력 형식:
+  - 반드시 JSON 형식으로 응답하세요
+  - analysis 필드 필수
+
+output_policy:
+  format: json
+  strict: true
+  required_fields:
+    - analysis

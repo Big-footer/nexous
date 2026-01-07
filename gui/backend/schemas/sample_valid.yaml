@@ -1,0 +1,141 @@
+# NEXOUS Project - 울산 태화지구 침수 분석
+# JSON Schema 기반 검증 대응 (필수 필드: project, agents, execution, trace)
+
+project:
+  id: flood_analysis_ulsan
+  name: 울산 태화지구 침수 분석
+  description: 태화강 유역 도시침수 분석 및 LID 효과 평가
+  domain: flood_analysis
+  owner: daejin
+  created_at: "2026-01-04"
+
+context:
+  data_sources:
+    dem:
+      type: tif
+      path: data/dem_taehwa.tif
+    landuse:
+      type: shapefile
+      path: data/landuse.shp
+    rainfall:
+      type: csv
+      path: data/rainfall_history.csv
+  constraints:
+    study_area: 울산 태화지구
+    return_periods: [10, 30, 50, 100]
+
+agents:
+  # 1. 계획 수립
+  - id: planner
+    preset: core/planner
+    purpose: 침수 분석 작업 계획 수립
+    input:
+      context: true
+    output:
+      schema: plan_schema
+
+  # 2. 문헌 조사
+  - id: literature
+    preset: domain/literature
+    purpose: 도시침수 및 LID 관련 선행연구 조사
+    dependencies:
+      - planner
+    input:
+      context: true
+      previous_results:
+        - planner
+    config:
+      keywords:
+        - 도시침수
+        - 저영향개발
+        - SWMM
+
+  # 3. GIS 분석
+  - id: gis
+    preset: domain/gis
+    purpose: 태화지구 DEM 분석 및 침수취약지역 식별
+    dependencies:
+      - planner
+    input:
+      context: true
+      previous_results:
+        - planner
+    config:
+      dem_resolution: 5m
+
+  # 4. SWMM 시뮬레이션
+  - id: swmm
+    preset: domain/swmm
+    purpose: EPA-SWMM 기반 침수 시뮬레이션
+    dependencies:
+      - gis
+    input:
+      context: true
+      previous_results:
+        - gis
+    config:
+      duration_minutes: 60
+
+  # 5. 결과 작성
+  - id: writer
+    preset: domain/academic_writer
+    purpose: 분석 결과 보고서 작성
+    dependencies:
+      - literature
+      - gis
+      - swmm
+    input:
+      previous_results:
+        - literature
+        - gis
+        - swmm
+
+  # 6. 품질 검증
+  - id: qa
+    preset: core/qa
+    purpose: 보고서 품질 검증
+    dependencies:
+      - writer
+    input:
+      previous_results:
+        - writer
+
+execution:
+  mode: sequential
+  retry_on_failure: true
+  max_retries: 2
+  stop_on_failure: true
+  timeout_minutes: 60
+
+artifacts:
+  - id: literature_review
+    source: literature
+    type: markdown
+    path: outputs/literature_review.md
+
+  - id: gis_analysis
+    source: gis
+    type: json
+    path: outputs/gis_analysis.json
+
+  - id: flood_depth_map
+    source: swmm
+    type: tif
+    path: outputs/flood_depth.tif
+
+  - id: final_report
+    source: writer
+    type: markdown
+    path: outputs/final_report.md
+
+  - id: qa_report
+    source: qa
+    type: json
+    path: outputs/qa_report.json
+
+trace:
+  enabled: true
+  level: standard
+  store:
+    type: local
+    path: traces/

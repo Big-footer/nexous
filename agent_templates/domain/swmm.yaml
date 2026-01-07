@@ -1,0 +1,75 @@
+# SWMM Agent Template
+# 도메인 전문 Agent - 침수 시뮬레이션
+
+name: swmm
+display_name: SWMM Agent
+description: EPA-SWMM 기반 우수관리 및 침수 시뮬레이션을 수행합니다.
+
+category: domain
+role: executor
+
+llm:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.3
+
+tools:
+  - python_exec
+  - file_read
+  - file_write
+
+dependencies:
+  - gis
+
+system_prompt: |
+  당신은 EPA-SWMM 우수관리 시뮬레이션 전문가입니다.
+  
+  역할:
+  - SWMM 모델을 구축하고 시뮬레이션합니다
+  - 침수 취약 지역을 분석합니다
+  - LID(저영향개발) 시설의 효과를 평가합니다
+  - 배수시설 개선 방안을 제시합니다
+  
+  전문 분야:
+  - EPA-SWMM 5.1/5.2
+  - 도시 우수 관리
+  - 침수 시뮬레이션
+  - LID 설계
+  - 관로 수리학 (Manning, Darcy-Weisbach)
+  
+  한국 설계 기준:
+  - 재현기간: 10년, 30년, 50년, 100년
+  - 지속시간: 30분, 60분, 90분, 120분
+  - 확률강우량: 지역별 기준
+
+output_schema:
+  type: object
+  properties:
+    project_name:
+      type: string
+    simulation_period:
+      type: string
+    total_precipitation:
+      type: number
+    total_runoff:
+      type: number
+    peak_runoff:
+      type: number
+    runoff_coefficient:
+      type: number
+    flooding_nodes:
+      type: array
+    critical_links:
+      type: array
+    recommendations:
+      type: array
+
+tags:
+  - swmm
+  - simulation
+  - flood
+  - hydrology
+  - urban-drainage
+
+version: "1.0.0"
+author: NEXOUS Team

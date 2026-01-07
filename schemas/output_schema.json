@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NEXOUS Agent Output Schema",
+  "description": "Agent 출력 JSON 스키마 (LEVEL 2)",
+  
+  "definitions": {
+    "planner_output": {
+      "type": "object",
+      "required": ["plan", "steps"],
+      "properties": {
+        "plan": {
+          "type": "string",
+          "description": "계획 요약"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["step_id", "description"],
+            "properties": {
+              "step_id": {"type": "string"},
+              "description": {"type": "string"},
+              "dependencies": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    
+    "executor_output": {
+      "type": "object",
+      "required": ["execution_status"],
+      "properties": {
+        "execution_status": {
+          "type": "string",
+          "enum": ["success", "partial", "failed"]
+        },
+        "output_files": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "logs": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "error": {"type": "string"}
+      }
+    },
+    
+    "analyst_output": {
+      "type": "object",
+      "required": ["analysis"],
+      "properties": {
+        "analysis": {"type": "string"},
+        "findings": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    
+    "writer_output": {
+      "type": "object",
+      "required": ["content"],
+      "properties": {
+        "content": {"type": "string"},
+        "format": {
+          "type": "string",
+          "enum": ["markdown", "html", "plain"]
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {"type": "string"},
+              "content": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  },
+  
+  "type": "object",
+  "properties": {
+    "agent_id": {"type": "string"},
+    "role": {"type": "string"},
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "output": {
+      "oneOf": [
+        {"$ref": "#/definitions/planner_output"},
+        {"$ref": "#/definitions/executor_output"},
+        {"$ref": "#/definitions/analyst_output"},
+        {"$ref": "#/definitions/writer_output"}
+      ]
+    },
+    "error": {"type": "string"}
+  },
+  "required": ["agent_id", "status"]
+}

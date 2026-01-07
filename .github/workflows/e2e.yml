@@ -1,0 +1,104 @@
+name: E2E Tests (LLM API Calls)
+
+on:
+  # 수동 실행
+  workflow_dispatch:
+    inputs:
+      test_pattern:
+        description: 'Test pattern to run (e.g., test_llm, test_integration)'
+        required: false
+        default: ''
+  
+  # 스케줄 실행 (매일 오전 3시 KST = 오후 6시 UTC)
+  schedule:
+    - cron: '0 18 * * *'
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pip
+          .pytest_cache
+        key: ${{ runner.os }}-pip-e2e-${{ matrix.python-version }}-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-e2e-${{ matrix.python-version }}-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-timeout pytest-asyncio
+    
+    - name: Create test results directory
+      run: mkdir -p test-results
+    
+    - name: Run E2E tests
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      run: |
+        if [ -n "${{ github.event.inputs.test_pattern }}" ]; then
+          # 특정 테스트 패턴 실행
+          pytest -m e2e -k "${{ github.event.inputs.test_pattern }}" \
+            --junitxml=test-results/junit-e2e.xml \
+            --cov-report=xml:test-results/coverage-e2e.xml \
+            --timeout=300
+        else
+          # 모든 E2E 테스트 실행
+          pytest -m e2e \
+            --junitxml=test-results/junit-e2e.xml \
+            --cov-report=xml:test-results/coverage-e2e.xml \
+            --timeout=300
+        fi
+      continue-on-error: false
+    
+    - name: Upload E2E test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-results-py${{ matrix.python-version }}
+        path: test-results/
+        retention-days: 30
+    
+    - name: Upload trace artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-traces-py${{ matrix.python-version }}
+        path: |
+          traces/
+          outputs/
+        retention-days: 7
+    
+    - name: Notify on failure
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '🔴 E2E Tests Failed',
+            body: `E2E tests failed on ${context.sha}.\n\nWorkflow: ${context.workflow}\nRun: ${context.runNumber}`,
+            labels: ['e2e-failure', 'bug']
+          })

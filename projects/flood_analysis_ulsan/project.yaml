@@ -1,0 +1,64 @@
+# NEXOUS Project: 울산 태화지구 침수 분석
+# Version: 1.0
+
+project_id: flood_analysis_ulsan
+name: 울산 태화지구 침수 시뮬레이션
+description: |
+  2016년 태풍 차바 시나리오를 기반으로
+  태화지구의 침수 심도를 분석하고 보고서를 생성합니다.
+
+execution:
+  mode: sequential
+
+# Agent 정의
+agents:
+  - id: planner_01
+    preset: planner
+    purpose: 침수 분석 계획 수립
+    inputs:
+      scenario: typhoon_chaba_2016
+      target_area: 태화지구
+    outputs:
+      - analysis_plan
+
+  - id: executor_01
+    preset: executor
+    purpose: SWMM 기반 침수 시뮬레이션 실행
+    dependencies:
+      - planner_01
+    inputs:
+      rainfall_data: data/rainfall/chaba_2016.csv
+      dem_file: data/dem/taehwa_10m.tif
+      drainage_network: data/network/taehwa_pipes.shp
+    outputs:
+      - flood_depth_raster
+      - simulation_log
+
+  - id: analyst_01
+    preset: analyst
+    purpose: 침수 결과 분석 및 통계 생성
+    dependencies:
+      - executor_01
+    inputs:
+      flood_raster: outputs/flood_depth.tif
+      building_data: data/buildings/taehwa_buildings.shp
+    outputs:
+      - flood_statistics
+      - risk_assessment
+
+  - id: writer_01
+    preset: writer
+    purpose: 침수 분석 보고서 작성
+    dependencies:
+      - planner_01
+      - analyst_01
+    inputs:
+      template: templates/flood_report.md
+    outputs:
+      - final_report
+
+# Context (전역 설정)
+context:
+  coordinate_system: EPSG:5186
+  simulation_duration: 3600  # seconds
+  output_format: GeoTIFF

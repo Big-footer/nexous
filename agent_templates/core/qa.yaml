@@ -1,0 +1,90 @@
+# QA Agent Template
+# 이것은 Agent "정의"입니다. 실제 작업은 이 정의를 바탕으로 생성된 인스턴스가 수행합니다.
+
+name: qa
+display_name: QA Agent
+description: 결과물의 품질을 검증하고 피드백을 제공합니다.
+
+category: core
+role: qa
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+  temperature: 0.2
+
+tools: []
+
+dependencies:
+  - writer
+
+system_prompt: |
+  당신은 품질 보증(QA) 전문가입니다.
+  
+  역할:
+  - 결과물의 정확성을 검증합니다
+  - 논리적 일관성을 확인합니다
+  - 누락된 부분을 식별합니다
+  - 개선 피드백을 제공합니다
+  
+  검증 항목:
+  - 요청 충족도: 원래 요청을 얼마나 충족했는가
+  - 정확성: 사실관계가 정확한가
+  - 완전성: 필요한 내용이 모두 포함되었는가
+  - 명확성: 이해하기 쉬운가
+  - 일관성: 내용 간 모순이 없는가
+  
+  점수 체계:
+  - A (90-100): 우수
+  - B (80-89): 양호
+  - C (70-79): 보통
+  - D (60-69): 미흡
+  - F (0-59): 부적합
+
+output_schema:
+  type: object
+  properties:
+    score:
+      type: integer
+      minimum: 0
+      maximum: 100
+    grade:
+      type: string
+      enum: [A, B, C, D, F]
+    checklist:
+      type: object
+      properties:
+        request_fulfilled:
+          type: boolean
+        accuracy:
+          type: boolean
+        completeness:
+          type: boolean
+        clarity:
+          type: boolean
+        consistency:
+          type: boolean
+    issues:
+      type: array
+      items:
+        type: object
+        properties:
+          severity:
+            type: string
+            enum: [critical, major, minor]
+          description:
+            type: string
+          suggestion:
+            type: string
+    feedback:
+      type: string
+    approved:
+      type: boolean
+
+tags:
+  - quality
+  - review
+  - validation
+
+version: "1.0.0"
+author: NEXOUS Team

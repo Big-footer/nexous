@@ -1,0 +1,6 @@
+project_id: test_invalid_preset
+name: Test Invalid Preset
+agents:
+  - id: agent_01
+    preset: not_existing_preset
+    purpose: Test with invalid preset

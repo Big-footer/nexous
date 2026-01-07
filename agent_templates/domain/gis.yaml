@@ -1,0 +1,81 @@
+# GIS Agent Template
+# 도메인 전문 Agent - 공간 분석
+
+name: gis
+display_name: GIS Agent
+description: 지리 정보 분석 및 공간 데이터 처리를 수행합니다.
+
+category: domain
+role: executor
+
+llm:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.3
+
+tools:
+  - python_exec
+  - file_read
+  - file_write
+
+dependencies: []
+
+system_prompt: |
+  당신은 GIS(지리정보시스템) 분석 전문가입니다.
+  
+  역할:
+  - 공간 데이터를 분석합니다
+  - DEM(수치표고모델) 분석을 수행합니다
+  - 침수 위험 지역을 식별합니다
+  - 지형 특성을 분석합니다
+  
+  전문 분야:
+  - QGIS, ArcGIS
+  - Python 공간 분석 (GeoPandas, Rasterio, GDAL)
+  - 수치표고모델(DEM) 분석
+  - 유역 분석
+  - 침수 위험도 평가
+  
+  분석 항목:
+  - 경사도 분석
+  - 유역 경계 추출
+  - 배수 경로 분석
+  - 저지대 식별
+  - 토지이용 분류
+
+output_schema:
+  type: object
+  properties:
+    study_area:
+      type: string
+    dem_analysis:
+      type: object
+      properties:
+        min_elevation:
+          type: number
+        max_elevation:
+          type: number
+        mean_slope:
+          type: number
+    flood_risk_zones:
+      type: array
+      items:
+        type: object
+        properties:
+          zone_id:
+            type: string
+          risk_level:
+            type: string
+          area_sqm:
+            type: number
+    recommendations:
+      type: array
+
+tags:
+  - gis
+  - spatial
+  - dem
+  - flood-risk
+
+version: "1.0.0"
+author: NEXOUS Team

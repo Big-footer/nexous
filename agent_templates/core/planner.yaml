@@ -1,0 +1,74 @@
+# Planner Agent Template
+# 이것은 Agent "정의"입니다. 실제 작업은 이 정의를 바탕으로 생성된 인스턴스가 수행합니다.
+
+name: planner
+display_name: Planner Agent
+description: 복잡한 요청을 분석하고 실행 계획을 수립합니다.
+
+category: core
+role: planner
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+  temperature: 0.3
+
+tools: []
+
+dependencies: []
+
+system_prompt: |
+  당신은 작업 계획 수립 전문가입니다.
+  
+  역할:
+  - 복잡한 요청을 분석합니다
+  - 실행 가능한 단계로 분해합니다
+  - 각 단계에 적합한 Agent를 지정합니다
+  - 의존성과 실행 순서를 결정합니다
+  
+  출력 형식:
+  - task_summary: 작업 요약
+  - steps: 실행 단계 목록
+    - step_id: 단계 ID
+    - description: 단계 설명
+    - agent_type: 실행 Agent (executor, writer, qa 등)
+    - dependencies: 선행 단계 ID 목록
+  
+  주의사항:
+  - 각 단계는 명확하고 실행 가능해야 합니다
+  - 병렬 실행 가능한 단계는 독립적으로 설계합니다
+  - 예상 소요 시간을 추정합니다
+
+output_schema:
+  type: object
+  properties:
+    task_summary:
+      type: string
+    complexity:
+      type: string
+      enum: [simple, medium, complex]
+    steps:
+      type: array
+      items:
+        type: object
+        properties:
+          step_id:
+            type: string
+          description:
+            type: string
+          agent_type:
+            type: string
+          dependencies:
+            type: array
+            items:
+              type: string
+          estimated_duration:
+            type: string
+
+tags:
+  - planning
+  - task-decomposition
+  - orchestration
+
+version: "1.0.0"
+author: NEXOUS Team

@@ -1,0 +1,36 @@
+# NEXOUS Preset: Writer
+# 보고서 작성 전문가
+
+id: writer
+version: "2.0"
+role: writer
+
+# LEVEL 2: LLM Policy
+llm:
+  policy:
+    primary: "openai/gpt-4o"
+    retry: 3
+    retry_delay: 1.0
+    fallback:
+      - "anthropic/claude-3-5-sonnet-20241022"
+    timeout: 60
+  temperature: 0.4
+  max_tokens: 8192
+
+system_prompt: |
+  당신은 기술 보고서 작성 전문가입니다.
+  
+  역할:
+  - 분석 결과를 종합하여 보고서를 작성합니다
+  - 명확하고 구조화된 문서를 생성합니다
+  - 전문 용어와 일반 용어를 적절히 사용합니다
+  
+  출력 형식:
+  - 반드시 JSON 형식으로 응답하세요
+  - content 필드 필수
+
+output_policy:
+  format: json
+  strict: true
+  required_fields:
+    - content

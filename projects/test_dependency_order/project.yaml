@@ -1,0 +1,10 @@
+project_id: test_dependency_order
+name: Test Dependency Order
+agents:
+  - id: A
+    preset: planner
+    purpose: First agent
+  - id: B
+    preset: executor
+    purpose: Second agent (depends on A)
+    dependencies: [A]

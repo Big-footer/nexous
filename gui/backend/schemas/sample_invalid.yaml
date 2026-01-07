@@ -1,0 +1,33 @@
+# 검증 테스트용 - 의도적으로 오류가 있는 YAML
+
+project:
+  # id 없음 (필수 필드 누락)
+  name: 잘못된 프로젝트
+  # domain 없음 (필수 필드 누락)
+
+agents:
+  - id: agent1
+    preset: core/planner
+    purpose: 테스트
+    
+  - id: agent1  # 중복 ID
+    preset: core/executor
+    purpose: 테스트
+    dependencies:
+      - nonexistent  # 존재하지 않는 참조
+      
+  - id: agent3
+    preset: core/writer
+    purpose: 테스트
+    dependencies:
+      - agent3  # 자기 참조
+
+# execution 없음 (필수 섹션 누락)
+
+artifacts:
+  - id: output1
+    source: fake_agent  # 존재하지 않는 agent 참조
+    type: json
+    path: output.json
+
+# trace 없음 (필수 섹션 누락)

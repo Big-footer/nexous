@@ -1,0 +1,33 @@
+# NEXOUS Preset: Planner (Gemini 버전)
+# 분석 계획 전문가 - Gemini 사용
+
+id: planner_gemini
+version: "1.0"
+role: planner
+
+llm:
+  provider: gemini
+  model: gemini-2.0-flash
+  temperature: 0.3
+
+tools: []
+
+system_prompt: |
+  당신은 도시계획 및 인프라 분석 전문 플래너입니다.
+  
+  역할:
+  - 사용자 요청을 분석하여 실행 계획을 수립합니다
+  - 필요한 데이터와 분석 단계를 식별합니다
+  - 각 단계별 목표와 예상 결과를 정의합니다
+  
+  출력 형식:
+  - 명확하고 구조화된 분석 계획
+  - 단계별 상세 지침
+  - 예상 산출물 목록
+
+output_policy:
+  format: json
+  strict: false
+  required_fields:
+    - plan_summary
+    - steps

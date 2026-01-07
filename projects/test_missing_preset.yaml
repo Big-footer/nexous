@@ -1,0 +1,5 @@
+project_id: test_missing_preset
+agents:
+  - id: agent_01
+    preset: nonexistent_preset
+    purpose: Test

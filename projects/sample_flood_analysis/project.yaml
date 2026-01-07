@@ -1,0 +1,134 @@
+# NEXOUS Sample Project - 울산 태화지구 침수 분석
+# 이것은 프로젝트 "정의"입니다. NEXOUS가 이 정의를 바탕으로 에이전트를 생성하고 실행합니다.
+
+project:
+  id: ulsan_flood_analysis
+  name: 울산 태화지구 침수 분석
+  description: 태화강 유역 도시침수 분석 및 LID 효과 평가
+  domain: urban_flood
+  version: "1.0.0"
+  author: DaeJin
+
+# Agent 정의 (NEXOUS가 생성할 에이전트들)
+agents:
+  # 1. 계획 수립
+  - id: planner
+    preset: core/planner
+    purpose: 침수 분석 작업 계획 수립
+    config:
+      temperature: 0.3
+      
+  # 2. 문헌 조사
+  - id: literature
+    preset: domain/literature
+    purpose: 도시침수 및 LID 관련 선행연구 조사
+    dependencies:
+      - planner
+    config:
+      search_databases:
+        - google_scholar
+        - kci
+        - riss
+      keywords:
+        - 도시침수
+        - 저영향개발
+        - SWMM
+        - 태화강
+        
+  # 3. GIS 분석
+  - id: gis
+    preset: domain/gis
+    purpose: 태화지구 DEM 분석 및 침수취약지역 식별
+    dependencies:
+      - planner
+    config:
+      study_area: 울산 태화지구
+      dem_resolution: 5m
+      analysis_types:
+        - slope
+        - watershed
+        - low_elevation
+        
+  # 4. SWMM 시뮬레이션
+  - id: swmm
+    preset: domain/swmm
+    purpose: EPA-SWMM 기반 침수 시뮬레이션
+    dependencies:
+      - gis
+    config:
+      return_periods:
+        - 10
+        - 30
+        - 50
+        - 100
+      duration_minutes: 60
+      lid_scenarios:
+        - baseline
+        - with_permeable_pavement
+        - with_bioretention
+        
+  # 5. 결과 작성
+  - id: writer
+    preset: domain/academic_writer
+    purpose: 분석 결과 보고서 작성
+    dependencies:
+      - literature
+      - gis
+      - swmm
+    config:
+      format: academic_report
+      language: korean
+      
+  # 6. 품질 검증
+  - id: qa
+    preset: core/qa
+    purpose: 보고서 품질 검증
+    dependencies:
+      - writer
+
+# 산출물 정의
+artifacts:
+  - id: literature_review
+    source: literature
+    format: markdown
+    path: literature_review.md
+    
+  - id: gis_analysis
+    source: gis
+    format: json
+    path: gis_analysis.json
+    
+  - id: flood_map
+    source: gis
+    format: png
+    path: flood_risk_map.png
+    
+  - id: swmm_results
+    source: swmm
+    format: json
+    path: swmm_results.json
+    
+  - id: final_report
+    source: writer
+    format: markdown
+    path: final_report.md
+    
+  - id: qa_report
+    source: qa
+    format: json
+    path: qa_report.json
+
+# 추적 설정
+trace:
+  enabled: true
+  store:
+    type: local
+    path: traces/
+  log_level: info
+
+# 실행 설정
+execution:
+  mode: pipeline
+  timeout_minutes: 60
+  retry_on_failure: true
+  max_retries: 2
