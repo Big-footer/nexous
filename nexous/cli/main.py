@@ -162,6 +162,13 @@ Examples:
         help="Filter comparison: 'llm' (LLM calls only), 'tool'/'tools' (Tool calls only), 'errors' (Errors only)"
     )
     
+    diff_parser.add_argument(
+        "--show",
+        type=str,
+        choices=["first", "all"],
+        help="Display mode: 'first' (first divergence only), 'all' (all differences)"
+    )
+    
     return parser
 
 
@@ -252,16 +259,15 @@ def cmd_diff(args) -> int:
     print(f"[NEXOUS] Trace 2: {args.trace2}")
     if args.only:
         print(f"[NEXOUS] Filter: --only {args.only}")
+    if args.show:
+        print(f"[NEXOUS] Show: --show {args.show}")
     
     try:
-        diff_traces(args.trace1, args.trace2, only=args.only)
+        diff_traces(args.trace1, args.trace2, only=args.only, show=args.show)
         print("\n[NEXOUS] Diff completed successfully")
         return 0
     except FileNotFoundError as e:
         print(f"[NEXOUS] Error: {e}")
-        return 1
-    except Exception as e:
-        print(f"[NEXOUS] Diff failed: {e}")
         return 1
     except Exception as e:
         print(f"[NEXOUS] Diff failed: {e}")

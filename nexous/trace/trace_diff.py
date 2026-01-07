@@ -13,13 +13,14 @@ from datetime import datetime
 class TraceDiff:
     """두 Trace 파일을 비교하는 클래스"""
     
-    def __init__(self, trace1_path: str, trace2_path: str, only: str = None):
+    def __init__(self, trace1_path: str, trace2_path: str, only: str = None, show: str = None):
         self.trace1_path = Path(trace1_path)
         self.trace2_path = Path(trace2_path)
         self.trace1: Dict[str, Any] = {}
         self.trace2: Dict[str, Any] = {}
         self.differences: List[Dict[str, Any]] = []
         self.only = only  # 'llm', 'tools', 'errors', None
+        self.show = show  # 'first', 'all', None
         
     def load_traces(self):
         """두 Trace 파일 로드"""
@@ -95,6 +96,94 @@ class TraceDiff:
                 })
         
         return differences
+    
+    def find_first_divergence(self) -> Dict[str, Any]:
+        """첫 번째 차이점 찾기"""
+        agents1 = self.trace1.get('agents', [])
+        agents2 = self.trace2.get('agents', [])
+        
+        # Agent 순서대로 비교
+        max_agents = max(len(agents1), len(agents2))
+        
+        for i in range(max_agents):
+            # Agent 존재 여부
+            if i >= len(agents1):
+                return {
+                    'type': 'AGENT_MISSING',
+                    'location': f"Agent #{i+1}",
+                    'agent_id': agents2[i].get('agent_id'),
+                    'message': f"Trace1에 Agent가 없음 (Trace2: {agents2[i].get('agent_id')})"
+                }
+            
+            if i >= len(agents2):
+                return {
+                    'type': 'AGENT_MISSING',
+                    'location': f"Agent #{i+1}",
+                    'agent_id': agents1[i].get('agent_id'),
+                    'message': f"Trace2에 Agent가 없음 (Trace1: {agents1[i].get('agent_id')})"
+                }
+            
+            agent1 = agents1[i]
+            agent2 = agents2[i]
+            
+            # Agent ID 차이
+            if agent1.get('agent_id') != agent2.get('agent_id'):
+                return {
+                    'type': 'AGENT_ID_DIFF',
+                    'location': f"Agent #{i+1}",
+                    'trace1_agent': agent1.get('agent_id'),
+                    'trace2_agent': agent2.get('agent_id'),
+                    'message': f"Agent ID 차이: {agent1.get('agent_id')} vs {agent2.get('agent_id')}"
+                }
+            
+            # Status 차이
+            if agent1.get('status') != agent2.get('status'):
+                return {
+                    'type': 'STATUS_DIFF',
+                    'location': f"Agent #{i+1}: {agent1.get('agent_id')}",
+                    'trace1_status': agent1.get('status'),
+                    'trace2_status': agent2.get('status'),
+                    'message': f"Status 차이: {agent1.get('status')} vs {agent2.get('status')}"
+                }
+            
+            # Steps 비교
+            steps1 = agent1.get('steps', [])
+            steps2 = agent2.get('steps', [])
+            
+            if len(steps1) != len(steps2):
+                return {
+                    'type': 'STEPS_COUNT_DIFF',
+                    'location': f"Agent #{i+1}: {agent1.get('agent_id')}",
+                    'trace1_count': len(steps1),
+                    'trace2_count': len(steps2),
+                    'message': f"Steps 개수 차이: {len(steps1)} vs {len(steps2)}"
+                }
+            
+            # 각 Step 비교
+            for j in range(len(steps1)):
+                step1 = steps1[j]
+                step2 = steps2[j]
+                
+                if step1.get('type') != step2.get('type'):
+                    return {
+                        'type': 'STEP_TYPE_DIFF',
+                        'location': f"Agent #{i+1}: {agent1.get('agent_id')}, Step #{j+1}",
+                        'trace1_type': step1.get('type'),
+                        'trace2_type': step2.get('type'),
+                        'message': f"Step type 차이: {step1.get('type')} vs {step2.get('type')}"
+                    }
+                
+                if step1.get('status') != step2.get('status'):
+                    return {
+                        'type': 'STEP_STATUS_DIFF',
+                        'location': f"Agent #{i+1}: {agent1.get('agent_id')}, Step #{j+1} ({step1.get('type')})",
+                        'trace1_status': step1.get('status'),
+                        'trace2_status': step2.get('status'),
+                        'message': f"Step status 차이: {step1.get('status')} vs {step2.get('status')}"
+                    }
+        
+        # 차이점 없음
+        return None
     
     def compare_errors(self) -> Dict[str, Any]:
         """에러 비교"""
@@ -241,9 +330,39 @@ class TraceDiff:
         print(f"   Trace 2: {self.trace2.get('run_id')}")
         
         if self.only:
-            print(f"   Filter: --only {self.only}\n")
-        else:
-            print()
+            print(f"   Filter: --only {self.only}")
+        if self.show:
+            print(f"   Show: --show {self.show}")
+        print()
+        
+        # --show first: 첫 divergence만 표시
+        if self.show == 'first':
+            first_div = self.find_first_divergence()
+            
+            if first_div:
+                print("🎯 First Divergence Found:")
+                print(f"   Type: {first_div['type']}")
+                print(f"   Location: {first_div['location']}")
+                print(f"   Message: {first_div['message']}")
+                print()
+                
+                # 상세 정보
+                if 'trace1_status' in first_div:
+                    print(f"   Trace1: {first_div['trace1_status']}")
+                    print(f"   Trace2: {first_div['trace2_status']}")
+                elif 'trace1_agent' in first_div:
+                    print(f"   Trace1: {first_div['trace1_agent']}")
+                    print(f"   Trace2: {first_div['trace2_agent']}")
+                elif 'trace1_count' in first_div:
+                    print(f"   Trace1: {first_div['trace1_count']} steps")
+                    print(f"   Trace2: {first_div['trace2_count']} steps")
+                elif 'trace1_type' in first_div:
+                    print(f"   Trace1: {first_div['trace1_type']}")
+                    print(f"   Trace2: {first_div['trace2_type']}")
+            else:
+                print("✅ No Divergence: Traces are identical!")
+            
+            return {'first_divergence': first_div}
         
         # --only llm 필터
         if self.only == 'llm':
@@ -405,7 +524,7 @@ class TraceDiff:
         }
 
 
-def diff_traces(trace1_path: str, trace2_path: str, only: str = None) -> Dict[str, Any]:
+def diff_traces(trace1_path: str, trace2_path: str, only: str = None, show: str = None) -> Dict[str, Any]:
     """두 Trace 파일 비교 (편의 함수)"""
-    differ = TraceDiff(trace1_path, trace2_path, only=only)
+    differ = TraceDiff(trace1_path, trace2_path, only=only, show=show)
     return differ.diff()
