@@ -1,0 +1,10 @@
+{
+  "baseline": true,
+  "project": "flood_analysis_ulsan",
+  "approved_by": "DPA Solutions",
+  "approved_at": "2026-01-07T14:41:15.270921+00:00",
+  "reason": "Initial baseline for flood analysis project",
+  "engine_version": "nexous:latest",
+  "lock": true,
+  "schema_version": "1.0"
+}

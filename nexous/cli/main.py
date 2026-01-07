@@ -169,6 +169,40 @@ Examples:
         help="Display mode: 'first' (first divergence only), 'all' (all differences)"
     )
     
+    # ========================================
+    # baseline 명령
+    # ========================================
+    baseline_parser = subparsers.add_parser(
+        "baseline",
+        help="Baseline management (approve, verify, list)"
+    )
+    
+    baseline_subparsers = baseline_parser.add_subparsers(dest="baseline_command", required=True)
+    
+    # baseline approve
+    approve_parser = baseline_subparsers.add_parser(
+        "approve",
+        help="Approve a run as baseline"
+    )
+    approve_parser.add_argument("trace_dir", type=str, help="Path to trace directory")
+    approve_parser.add_argument("--project", type=str, required=True, help="Project name")
+    approve_parser.add_argument("--approved-by", type=str, required=True, help="Approver name/org")
+    approve_parser.add_argument("--reason", type=str, required=True, help="Approval reason")
+    approve_parser.add_argument("--engine-version", type=str, default="nexous:latest", help="Engine version")
+    
+    # baseline verify
+    verify_parser = baseline_subparsers.add_parser(
+        "verify",
+        help="Verify baseline integrity"
+    )
+    verify_parser.add_argument("project", type=str, help="Project name")
+    
+    # baseline list
+    list_parser = baseline_subparsers.add_parser(
+        "list",
+        help="List all baselines"
+    )
+    
     return parser
 
 
@@ -274,6 +308,130 @@ def cmd_diff(args) -> int:
         return 1
 
 
+def cmd_baseline(args) -> int:
+    """Baseline 명령 실행"""
+    from pathlib import Path
+    
+    if args.baseline_command == "approve":
+        from nexous.baseline import approve_baseline, BaselineManager
+        
+        print("[NEXOUS] Baseline Approve started")
+        print(f"[NEXOUS] Trace dir: {args.trace_dir}")
+        print(f"[NEXOUS] Project: {args.project}")
+        print(f"[NEXOUS] Approved by: {args.approved_by}")
+        
+        try:
+            trace_dir = Path(args.trace_dir)
+            
+            # approval.json 생성
+            approval_path = approve_baseline(
+                trace_dir=trace_dir,
+                project=args.project,
+                approved_by=args.approved_by,
+                reason=args.reason,
+                engine_version=args.engine_version
+            )
+            
+            print(f"✅ approval.json created: {approval_path}")
+            
+            # baseline.yaml 생성
+            manager = BaselineManager()
+            run_id = trace_dir.name
+            trace_path = f"traces/{args.project}/{run_id}/trace.json"
+            
+            baseline_path = manager.create_baseline(
+                project=args.project,
+                run_id=run_id,
+                trace_path=trace_path
+            )
+            
+            print(f"✅ baseline.yaml created: {baseline_path}")
+            print(f"\n[NEXOUS] Baseline approved successfully")
+            print(f"   Run ID: {run_id}")
+            print(f"   Project: {args.project}")
+            print(f"   Approved by: {args.approved_by}")
+            
+            return 0
+            
+        except Exception as e:
+            print(f"[NEXOUS] Approval failed: {e}")
+            return 1
+    
+    elif args.baseline_command == "verify":
+        from nexous.baseline import BaselineManager
+        
+        print("[NEXOUS] Baseline Verify started")
+        print(f"[NEXOUS] Project: {args.project}")
+        
+        try:
+            manager = BaselineManager()
+            valid, errors = manager.verify_baseline(args.project)
+            
+            if valid:
+                print("\n✅ Baseline Verification Passed")
+                print(f"   ✔ Baseline exists")
+                print(f"   ✔ approval.json found")
+                print(f"   ✔ lock=true")
+                print(f"   ✔ trace schema valid")
+                print(f"   ✔ baseline verified")
+                return 0
+            else:
+                print("\n❌ Baseline Verification Failed")
+                for error in errors:
+                    print(f"   ✗ {error}")
+                return 1
+                
+        except Exception as e:
+            print(f"[NEXOUS] Verification failed: {e}")
+            return 1
+    
+    elif args.baseline_command == "list":
+        from nexous.baseline import BaselineManager
+        from pathlib import Path
+        
+        print("[NEXOUS] Baseline List")
+        
+        try:
+            manager = BaselineManager()
+            projects_dir = Path("projects")
+            
+            if not projects_dir.exists():
+                print("No projects directory found")
+                return 0
+            
+            baselines = []
+            for project_dir in projects_dir.iterdir():
+                if not project_dir.is_dir():
+                    continue
+                
+                baseline_path = project_dir / "baseline.yaml"
+                if baseline_path.exists():
+                    config = manager.load_baseline(project_dir.name)
+                    if config:
+                        baselines.append((project_dir.name, config))
+            
+            if not baselines:
+                print("No baselines found")
+                return 0
+            
+            print(f"\nFound {len(baselines)} baseline(s):\n")
+            for project, config in baselines:
+                print(f"📌 {project}")
+                print(f"   Run ID: {config.baseline_run_id}")
+                print(f"   Approved: {config.approved}")
+                print(f"   Approved at: {config.approved_at}")
+                print(f"   Trace: {config.trace_path}")
+                print()
+            
+            return 0
+            
+        except Exception as e:
+            print(f"[NEXOUS] List failed: {e}")
+            return 1
+    
+    return 0
+
+
 def cli(args: list = None) -> int:
     """CLI 메인 함수"""
     # .env 파일 로드
@@ -292,6 +450,8 @@ def cli(args: list = None) -> int:
         return cmd_replay(parsed_args)
     elif parsed_args.command == "diff":
         return cmd_diff(parsed_args)
+    elif parsed_args.command == "baseline":
+        return cmd_baseline(parsed_args)
     
     return 0
 

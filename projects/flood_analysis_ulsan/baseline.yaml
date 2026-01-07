@@ -1,0 +1,9 @@
+approved: true
+approved_at: '2026-01-07T14:41:15.317007+00:00'
+baseline_run_id: baseline_002_docker
+policy:
+  diff_required: true
+  overwrite_forbidden: true
+  replay_allowed: true
+project: flood_analysis_ulsan
+trace_path: traces/flood_analysis_ulsan/baseline_002_docker/trace.json
