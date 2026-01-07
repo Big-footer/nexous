@@ -1,0 +1,96 @@
+name: Performance Benchmark
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 매일 오전 2시 (UTC)
+  workflow_dispatch:  # 수동 실행 가능
+
+env:
+  PROJECT_PATH: projects/flood_analysis_ulsan/project.yaml
+  BENCHMARK_RUNS: 5
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      
+      - name: Run benchmark (Mock mode)
+        run: |
+          echo "🏃 Running ${{ env.BENCHMARK_RUNS }} benchmark iterations"
+          
+          for i in $(seq 1 ${{ env.BENCHMARK_RUNS }}); do
+            RUN_ID="benchmark_$(date +%Y%m%d)_${i}"
+            echo "Run $i: $RUN_ID"
+            
+            python -m nexous.cli.main run \
+              ${{ env.PROJECT_PATH }} \
+              --trace-dir traces \
+              --run-id "$RUN_ID"
+          done
+      
+      - name: Analyze benchmark results
+        run: |
+          echo "📊 Benchmark Results Analysis"
+          echo ""
+          
+          # Duration 추출 및 통계
+          DURATIONS=$(jq '.duration_ms' traces/flood_analysis_ulsan/benchmark_$(date +%Y%m%d)_*/trace.json)
+          
+          echo "Durations (ms):"
+          echo "$DURATIONS"
+          
+          # 평균 계산
+          AVG=$(echo "$DURATIONS" | awk '{sum+=$1} END {print sum/NR}')
+          echo ""
+          echo "Average: ${AVG}ms"
+          
+          # 최소/최대
+          MIN=$(echo "$DURATIONS" | sort -n | head -1)
+          MAX=$(echo "$DURATIONS" | sort -n | tail -1)
+          echo "Min: ${MIN}ms"
+          echo "Max: ${MAX}ms"
+          
+          # 결과 저장
+          cat > benchmark_results.json << EOF
+          {
+            "date": "$(date -I)",
+            "runs": ${{ env.BENCHMARK_RUNS }},
+            "average_ms": $AVG,
+            "min_ms": $MIN,
+            "max_ms": $MAX,
+            "durations": [$DURATIONS]
+          }
+          EOF
+          
+          cat benchmark_results.json
+      
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_number }}
+          path: |
+            traces/flood_analysis_ulsan/benchmark_*
+            benchmark_results.json
+          retention-days: 90
+      
+      - name: Compare with previous benchmark
+        continue-on-error: true
+        run: |
+          # 이전 benchmark와 비교 로직
+          # (이전 artifact 다운로드 필요)
+          echo "📈 Comparison with previous benchmark"
+          echo "TODO: Implement historical comparison"

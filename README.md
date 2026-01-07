@@ -1,8 +1,13 @@
-# PROMETHEUS
+# NEXOUS
+
+[![Tests](https://github.com/Big-footer/nexous/actions/workflows/tests.yml/badge.svg)](https://github.com/Big-footer/nexous/actions/workflows/tests.yml)
+[![Docker Build](https://github.com/Big-footer/nexous/actions/workflows/docker-build.yml/badge.svg)](https://github.com/Big-footer/nexous/actions/workflows/docker-build.yml)
+[![PR Test](https://github.com/Big-footer/nexous/actions/workflows/pr-test.yml/badge.svg)](https://github.com/Big-footer/nexous/actions/workflows/pr-test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Project-based AI Agent Factory & Orchestrator
 
-PROMETHEUS는 프로젝트 단위로 전용 AI Agent를 생성하고 오케스트레이션하는 시스템입니다.
+NEXOUS는 프로젝트 단위로 전용 AI Agent를 생성하고 오케스트레이션하는 시스템입니다.
 
 ## 핵심 특징
 

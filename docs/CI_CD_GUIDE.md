@@ -1,262 +1,306 @@
-# NEXOUS CI/CD 설정 가이드
+# NEXOUS CI/CD 가이드
 
-## 📋 개요
+## 개요
 
-NEXOUS 프로젝트의 **LEVEL 3 CI/CD** 구축을 완료했습니다.
-
-- **자동 테스트**: PR/Push 시 자동으로 pytest 실행
-- **E2E 분리**: 실제 LLM 호출 테스트는 별도 워크플로우로 분리
-- **머지 게이트**: 테스트 실패 시 자동으로 머지 차단
-- **결과 보관**: 테스트 결과와 trace를 아티팩트로 저장
+NEXOUS는 GitHub Actions를 사용한 완전 자동화된 CI/CD 파이프라인을 제공합니다.
 
 ---
 
-## 🔧 설정된 파일
+## 🔄 워크플로우 구조
 
-### 1. pytest.ini (업데이트)
-- E2E 마커 추가: `@pytest.mark.e2e`
-- 테스트 결과 출력 경로: `test-results/`
-- Coverage 리포트 생성
+### 1. PR Test & Trace Diff
+**트리거**: Pull Request to main
+**파일**: `.github/workflows/pr-test.yml`
 
-### 2. .github/workflows/ci.yml
-**PR/Push 시 자동 실행**
-- Python 3.10, 3.11, 3.12 멀티 버전 테스트
-- E2E 테스트 제외: `pytest -m "not e2e"`
-- 병렬 실행: pytest-xdist 사용
-- 린팅: black, isort, ruff
+#### 실행 단계
+1. **Baseline 검증**: DRY replay로 baseline trace 확인
+2. **PR 실행**: Mock 모드로 PR 코드 실행
+3. **Diff 비교**: Baseline vs PR trace 비교
+4. **성능 검사**: 50% 이상 느려지면 경고
+5. **PR 코멘트**: 결과를 PR에 자동 게시
 
-### 3. .github/workflows/e2e.yml
-**E2E 테스트 (수동/스케줄)**
-- 수동 실행: GitHub Actions UI에서 실행
-- 자동 실행: 매일 오전 3시 (KST)
-- E2E 테스트만 실행: `pytest -m e2e`
-- API 키 주입: GitHub Secrets 사용
+#### 성능 회귀 기준
+- **경고**: PR이 baseline보다 50% 이상 느림
+- **통과**: 50% 이내
 
-### 4. .gitignore (추가)
-- 테스트 결과 디렉토리 제외
-- Coverage 리포트 제외
-- 환경 변수 파일 제외
+#### 예시 PR 코멘트
+```markdown
+## 🔍 NEXOUS Trace Diff Report
+
+### Comparison
+- **Baseline**: `baseline_002_docker`
+- **PR Run**: `pr_123_abc123`
+
+### ✅ Performance OK
+
+### Diff Output
+```
+📋 Metadata:
+   project_id: ✅
+   status: ✅
+   duration_ms:
+      Trace1: 35
+      Trace2: 42
+      Diff: 7
+```
+```
 
 ---
 
-## 🔑 GitHub Secrets 설정
+### 2. Docker Build & Test
+**트리거**: Push to main, PR (Dockerfile 변경)
+**파일**: `.github/workflows/docker-build.yml`
 
-다음 Secrets를 GitHub 저장소에 등록해야 합니다:
+#### 실행 단계
+1. **Docker 빌드**: Multi-stage build
+2. **기본 테스트**: `--version`, `--help`
+3. **DRY Replay**: Docker 내에서 trace replay
+4. **Registry 푸시**: main 브랜치일 경우 GHCR에 푸시
 
-### 필수 (E2E 테스트용)
-```
-OPENAI_API_KEY       # OpenAI API 키
-ANTHROPIC_API_KEY    # Anthropic (Claude) API 키
-GOOGLE_API_KEY       # Google (Gemini) API 키
-```
-
-### 선택 (Coverage 리포트용)
-```
-CODECOV_TOKEN        # Codecov 토큰 (선택사항)
-```
-
-### Secrets 등록 방법
-1. GitHub 저장소 → Settings → Secrets and variables → Actions
-2. "New repository secret" 클릭
-3. Name과 Value 입력 후 저장
-
+#### 이미지 태그
+- `latest`: main 브랜치 최신
+- `main-{sha}`: 커밋별
+- `pr-{number}`: PR별
 
 ---
 
-## 🚀 워크플로우 실행 방법
+### 3. Tests (Pytest)
+**트리거**: Push, Pull Request
+**파일**: `.github/workflows/tests.yml`
 
-### 1. 자동 CI 테스트 (ci.yml)
-
-**자동 트리거:**
-- `main` 또는 `develop` 브랜치에 Push
-- PR 생성 시 자동 실행
-
-**테스트 범위:**
-- E2E 테스트 제외 (`pytest -m "not e2e"`)
-- Unit 테스트 + Integration 테스트 (Mock 사용)
-
-**결과:**
-- 테스트 실패 시 PR 머지 차단
-- 테스트 리포트가 PR에 자동 코멘트
+#### 실행 단계
+1. **Multi Python**: 3.10, 3.11, 3.12
+2. **Pytest 실행**: 전체 테스트
+3. **Coverage**: Python 3.11에서 실행
+4. **Codecov 업로드**: 커버리지 리포트
 
 ---
 
-### 2. E2E 테스트 (e2e.yml)
+### 4. Performance Benchmark
+**트리거**: 매일 오전 2시 (UTC), 수동 실행
+**파일**: `.github/workflows/benchmark.yml`
 
-#### 수동 실행
-1. GitHub 저장소 → Actions 탭
-2. "E2E Tests (LLM API Calls)" 선택
-3. "Run workflow" 클릭
-4. (선택) Test pattern 입력 (예: `test_llm`, `test_integration`)
-5. "Run workflow" 확인
+#### 실행 단계
+1. **5회 반복 실행**: Mock 모드
+2. **통계 분석**: 평균, 최소, 최대
+3. **결과 저장**: JSON 형식
+4. **Artifact 업로드**: 90일 보관
 
-#### 스케줄 자동 실행
-- 매일 오전 3시 (KST) / 오후 6시 (UTC)
-- 모든 E2E 테스트 자동 실행
-
-**테스트 범위:**
-- E2E 테스트만 실행 (`pytest -m e2e`)
-- 실제 LLM API 호출
-- API 키 필수
-
-**결과:**
-- 실패 시 GitHub Issue 자동 생성
-- Trace 파일과 결과를 아티팩트로 저장
-
----
-
-## 📊 테스트 결과 확인
-
-### Actions 아티팩트
-1. GitHub 저장소 → Actions 탭
-2. 완료된 워크플로우 선택
-3. "Artifacts" 섹션에서 다운로드
-
-**저장되는 아티팩트:**
-- `test-results-py3.X`: JUnit XML, Coverage 리포트
-- `e2e-test-results-py3.X`: E2E 테스트 결과
-- `e2e-traces-py3.X`: Trace 파일 및 outputs
-
-### Coverage 리포트
-- HTML 리포트: `test-results/htmlcov/index.html`
-- XML 리포트: `test-results/coverage.xml`
-- Codecov (선택): https://codecov.io
-
----
-
-## 🏷️ 테스트 마커 사용법
-
-### 마커 종류
-```python
-@pytest.mark.e2e          # E2E 테스트 (실제 LLM 호출)
-@pytest.mark.unit         # Unit 테스트
-@pytest.mark.integration  # Integration 테스트
-@pytest.mark.slow         # 느린 테스트
+#### 벤치마크 결과 예시
+```json
+{
+  "date": "2026-01-07",
+  "runs": 5,
+  "average_ms": 45.2,
+  "min_ms": 42,
+  "max_ms": 49,
+  "durations": [45, 42, 46, 49, 44]
+}
 ```
 
+---
 
-### E2E 테스트 작성 예시
+## 🔐 Secrets 설정
 
-```python
-import pytest
+### 필수 Secrets
 
-# 전체 파일을 E2E로 마킹
-pytestmark = [
-    pytest.mark.e2e,
-    pytest.mark.skipif(
-        not os.getenv("OPENAI_API_KEY"),
-        reason="OPENAI_API_KEY not set"
-    )
-]
+#### OPENAI_API_KEY
+- **용도**: 실제 LLM 테스트
+- **설정**: Settings → Secrets → Actions
+- **값**: `sk-proj-...`
 
-class TestRealLLM:
-    def test_openai_call(self):
-        # 실제 OpenAI API 호출
-        pass
+#### ANTHROPIC_API_KEY
+- **용도**: Claude 모델 사용
+- **설정**: Settings → Secrets → Actions
+- **값**: `sk-ant-...`
+
+#### GOOGLE_API_KEY
+- **용도**: Gemini 모델 사용
+- **설정**: Settings → Secrets → Actions
+- **값**: `AIza...`
+
+### 자동 제공 Secrets
+- `GITHUB_TOKEN`: GitHub API 접근 (자동)
+
+---
+
+## 📊 배지 (Badges)
+
+README에 추가된 배지:
+
+```markdown
+[![Tests](https://github.com/Big-footer/nexous/actions/workflows/tests.yml/badge.svg)](https://github.com/Big-footer/nexous/actions/workflows/tests.yml)
+[![Docker Build](https://github.com/Big-footer/nexous/actions/workflows/docker-build.yml/badge.svg)](https://github.com/Big-footer/nexous/actions/workflows/docker-build.yml)
+[![PR Test](https://github.com/Big-footer/nexous/actions/workflows/pr-test.yml/badge.svg)](https://github.com/Big-footer/nexous/actions/workflows/pr-test.yml)
 ```
 
-### 마커로 선택 실행
+---
 
+## 🚀 사용 방법
+
+### PR 워크플로우
+
+1. **브랜치 생성**
 ```bash
-# E2E 제외하고 실행 (CI에서 사용)
-pytest -m "not e2e"
-
-# E2E만 실행
-pytest -m e2e
-
-# 특정 테스트만 실행
-pytest -m e2e -k test_llm
-
-# 느린 테스트 제외
-pytest -m "not slow"
+git checkout -b feature/my-feature
 ```
 
----
-
-## 🛠️ 로컬 개발 환경
-
-### 의존성 설치
+2. **코드 수정**
 ```bash
-pip install -r requirements.txt
-pip install pytest pytest-cov pytest-xdist pytest-timeout pytest-asyncio
+# nexous 코드 수정
+vim nexous/core/runner.py
 ```
 
-
-### 로컬에서 테스트 실행
-
+3. **커밋 & 푸시**
 ```bash
-# E2E 제외 테스트
-pytest -m "not e2e"
-
-# E2E 테스트 (API 키 필요)
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-export GOOGLE_API_KEY="..."
-pytest -m e2e
-
-# Coverage 포함
-pytest --cov=nexous --cov-report=html
-
-# 병렬 실행
-pytest -n auto
+git add .
+git commit -m "feat: add new feature"
+git push origin feature/my-feature
 ```
 
-### 테스트 디렉토리 생성
+4. **PR 생성**
+- GitHub에서 PR 생성
+- 자동으로 워크플로우 실행
+- PR 코멘트에 결과 표시
+
+5. **결과 확인**
+- ✅ 모든 체크 통과 → 머지 가능
+- ❌ 실패 → 로그 확인 후 수정
+
+---
+
+### 수동 벤치마크 실행
+
+1. **Actions 탭 이동**
+2. **Performance Benchmark 선택**
+3. **Run workflow 클릭**
+4. **결과 확인**: Artifacts에서 다운로드
+
+---
+
+## 🐛 트러블슈팅
+
+### 문제 1: PR 테스트 실패 (Baseline 없음)
+
+**증상:**
+```
+⚠️  Baseline trace not found: baseline_002_docker
+```
+
+**해결:**
 ```bash
-mkdir -p test-results
+# Baseline trace 생성
+python -m nexous.cli.main run \
+  projects/flood_analysis_ulsan/project.yaml \
+  --run-id baseline_002_docker
+
+# Commit & Push
+git add traces/
+git commit -m "chore: add baseline trace"
+git push
+```
+
+### 문제 2: Docker 빌드 실패
+
+**증상:**
+```
+ERROR: failed to solve: failed to read dockerfile
+```
+
+**해결:**
+1. Dockerfile 문법 확인
+2. `.dockerignore` 확인
+3. 로컬에서 빌드 테스트
+```bash
+docker build -t nexous:test .
+```
+
+### 문제 3: 성능 회귀 경고
+
+**증상:**
+```
+⚠️  Performance regression detected!
+Baseline: 35ms
+PR: 60ms
+Increase: 71.4%
+```
+
+**해결:**
+1. Trace diff 확인
+2. 코드 최적화
+3. 또는 baseline 갱신
+
+---
+
+## 📈 모니터링
+
+### Actions 탭
+- 모든 워크플로우 실행 기록
+- 로그 확인
+- Artifacts 다운로드
+
+### Insights 탭
+- Dependency graph
+- Network activity
+- Contributors
+
+---
+
+## 🎯 Best Practices
+
+### 1. Baseline 관리
+- 주요 릴리스마다 baseline 갱신
+- `baseline_v1.0`, `baseline_v2.0` 등으로 버전 관리
+- traces 디렉토리를 git에 포함
+
+### 2. PR 전략
+- 작은 단위로 PR 생성
+- CI 통과 후 머지
+- 성능 회귀 주의
+
+### 3. 테스트 작성
+- 새 기능마다 테스트 추가
+- Mock 테스트 우선
+- LLM 테스트는 최소화 (비용)
+
+### 4. Docker 이미지
+- main 브랜치만 latest 태그
+- PR은 임시 태그
+- 정기적으로 이미지 정리
+
+---
+
+## 🔧 커스터마이징
+
+### 성능 회귀 임계값 변경
+
+`.github/workflows/pr-test.yml`:
+```yaml
+# 50% → 30%로 변경
+THRESHOLD=$(echo "$BASELINE_MS * 1.3" | bc)
+```
+
+### 벤치마크 실행 횟수 변경
+
+`.github/workflows/benchmark.yml`:
+```yaml
+env:
+  BENCHMARK_RUNS: 10  # 5 → 10으로 변경
+```
+
+### 스케줄 변경
+
+`.github/workflows/benchmark.yml`:
+```yaml
+schedule:
+  - cron: '0 0 * * 0'  # 매주 일요일 자정
 ```
 
 ---
 
-## 📝 체크리스트
+## 📚 추가 리소스
 
-### 초기 설정
-- [ ] GitHub Secrets 등록 (OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY)
-- [ ] CI 워크플로우 확인 (PR 생성 후 자동 실행 확인)
-- [ ] E2E 워크플로우 수동 실행 테스트
-- [ ] 테스트 결과 아티팩트 다운로드 확인
-
-### 테스트 작성 시
-- [ ] E2E 테스트는 `@pytest.mark.e2e` 마커 추가
-- [ ] API 키 없을 때 skipif 처리
-- [ ] 타임아웃 설정 (--timeout=300)
-- [ ] Trace 파일 생성 확인
-
-
----
-
-## 🔍 트러블슈팅
-
-### 문제: CI에서 테스트 실패
-**해결:**
-1. Actions 탭에서 실패 로그 확인
-2. 아티팩트 다운로드하여 상세 리포트 확인
-3. 로컬에서 동일한 Python 버전으로 재현
-
-### 문제: E2E 테스트 실패
-**해결:**
-1. GitHub Secrets에 API 키가 올바르게 설정되었는지 확인
-2. API 키 유효성 확인 (만료, 권한)
-3. 로컬에서 `pytest -m e2e -v` 실행하여 상세 로그 확인
-
-### 문제: Coverage가 너무 낮음
-**해결:**
-1. `test-results/htmlcov/index.html` 확인
-2. 커버되지 않은 코드 확인
-3. 누락된 테스트 추가
-
-### 문제: 테스트 타임아웃
-**해결:**
-1. `--timeout=300` 옵션 확인
-2. 느린 테스트에 `@pytest.mark.slow` 추가
-3. Mock을 사용하여 외부 의존성 제거
-
----
-
-## 📚 참고 자료
-
-- [pytest 공식 문서](https://docs.pytest.org/)
 - [GitHub Actions 문서](https://docs.github.com/en/actions)
-- [pytest-cov 문서](https://pytest-cov.readthedocs.io/)
-- [pytest-xdist 문서](https://pytest-xdist.readthedocs.io/)
-
+- [Docker 문서](https://docs.docker.com/)
+- [NEXOUS Trace Commands](./TRACE_COMMANDS.md)
+- [LLM Test Results](./LLM_TEST_RESULTS.md)
